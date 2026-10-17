@@ -49,7 +49,7 @@ In Supabase links **„Authentication“**:
    - **„Confirm email“: Empfehlung AUS** (einfacher, man kann sofort loslegen).
      Wenn du es AN lässt, bekommt jeder nach dem Registrieren eine E-Mail mit Bestätigungs-Link – auch ok.
 2. **URL Configuration**
-   - **Site URL:** die Adresse deiner App, z. B. `https://mescak6134.github.io/lager/`
+   - **Site URL:** die Adresse deiner App, z. B. `https://mescak6134.github.io/Lager/`
    - **Redirect URLs:** dieselbe Adresse nochmal hinzufügen.
    - (Wird für „Passwort vergessen“ und Bestätigungs-Links gebraucht.)
 
@@ -74,7 +74,7 @@ In Supabase links **„Authentication“**:
 
 1. Im Repository auf **Settings → Pages**.
 2. **Source:** „Deploy from a branch“ · **Branch:** `main` und `/ (root)` → **Save**.
-3. Nach 1–2 Minuten steht oben die Adresse der App (z. B. `https://mescak6134.github.io/lager/`).
+3. Nach 1–2 Minuten steht oben die Adresse der App (z. B. `https://mescak6134.github.io/Lager/`).
    Genau diese Adresse bei Schritt 3 als Site URL eintragen.
 
 ### Schritt 6 · Als Admin registrieren
