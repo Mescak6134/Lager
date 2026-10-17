@@ -9,5 +9,5 @@
 //  Schlüssel hier eintragen!
 // =====================================================================
 
-export const SUPABASE_URL = 'HIER-PROJECT-URL-EINTRAGEN';
-export const SUPABASE_KEY = 'HIER-PUBLISHABLE-KEY-EINTRAGEN';
+export const SUPABASE_URL = 'https://welzmrjtlwtcfnptfitv.supabase.co';
+export const SUPABASE_KEY = 'sb_publishable_krvBOJFHrrMdQtkRVQKpNw_jdV7M3c1';
