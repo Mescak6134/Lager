@@ -1,7 +1,7 @@
 {
   "name": "Lager – Bestand & Einkäufe",
   "short_name": "Lager",
-  "description": "Gemeinsamer Lagerbestand: wer hat was gekauft und wem gehört was.",
+  "description": "Was gehört wem – Menge, Einzelwert und Gesamtwert für die Inventur.",
   "lang": "de",
   "id": "./",
   "start_url": "./",

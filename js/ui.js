@@ -98,6 +98,9 @@ const mf = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }
 export const fmtNum = (n) => nf.format(Number(n) || 0);
 export const fmtQty = (n, unit) => `${fmtNum(n)} ${unit || ''}`.trim();
 export const fmtMoney = (n) => mf.format(Number(n) || 0);
+const mf4 = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 4 });
+// Einzelwert: bei kleinen Beträgen (z. B. 0,0903 € je g) mehr Stellen zeigen
+export const fmtUnitMoney = (n) => (n == null ? '—' : Math.abs(n) < 1 ? mf4.format(n) : mf.format(n));
 export function fmtDate(d) {
   if (!d) return '';
   const [y, m, day] = String(d).slice(0, 10).split('-');
@@ -196,7 +199,6 @@ export function formDialog(title, fields, values = {}, { submit = 'Speichern', o
   return openDialog((dlg, finish) => {
     const err = el('div', { class: 'error', hidden: true });
     const inputs = {};
-    const photoState = {};
     const rows = fields.map((f) => {
       if (f.type === 'heading') return el('h3', { class: 'form-h', text: f.label });
       let input;
@@ -214,22 +216,6 @@ export function formDialog(title, fields, values = {}, { submit = 'Speichern', o
         return el('label', { class: 'field checkrow', for: id }, input, el('span', { text: f.label }));
       } else if (f.type === 'color') {
         input = el('input', { id, name: f.name, type: 'color', value: v || '#d97706', class: 'color' });
-      } else if (f.type === 'photo') {
-        const preview = el('img', { class: 'photo-preview', alt: '', hidden: !f.current });
-        if (f.current) preview.src = f.current;
-        const file = el('input', { type: 'file', accept: 'image/*', class: 'file-hidden', id });
-        const removeBtn = el('button', { type: 'button', class: 'btn small danger', text: 'Foto entfernen', hidden: !f.current,
-          onclick: () => { photoState.remove = true; photoState.file = null; preview.hidden = true; removeBtn.hidden = true; } });
-        file.addEventListener('change', () => {
-          const fl = file.files && file.files[0];
-          if (!fl) return;
-          photoState.file = fl; photoState.remove = false;
-          preview.src = URL.createObjectURL(fl); preview.hidden = false; removeBtn.hidden = false;
-        });
-        return el('div', { class: 'field' }, el('span', { class: 'lbl', text: f.label }),
-          preview,
-          el('div', { class: 'photo-actions' },
-            el('label', { class: 'btn small', for: id }, icon('camera'), 'Foto wählen'), removeBtn, file));
       } else {
         input = el('input', {
           id, name: f.name, type: f.type === 'number' ? 'text' : (f.type || 'text'),
@@ -243,12 +229,10 @@ export function formDialog(title, fields, values = {}, { submit = 'Speichern', o
       if (f.required) input.required = true;
       inputs[f.name] = input;
       let control = input;
-      if (f.scan) {
+      const btns = [...(f.buttons || []), ...(f.scan ? [{ icon: 'scan', label: 'Barcode scannen', onClick: async (inp) => { const code = await f.scan(); if (code) inp.value = code; } }] : [])];
+      if (btns.length) {
         control = el('div', { class: 'with-btn' }, input,
-          el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Barcode scannen', onclick: async () => {
-            const code = await f.scan();
-            if (code) input.value = code;
-          } }, icon('scan')));
+          btns.map((b) => el('button', { type: 'button', class: 'icon-btn', 'aria-label': b.label, title: b.label, onclick: (e) => { e.preventDefault(); b.onClick(input); } }, icon(b.icon))));
       }
       return el('label', { class: 'field', for: id },
         el('span', { class: 'lbl', text: f.label + (f.required ? ' *' : '') }),
@@ -265,7 +249,6 @@ export function formDialog(title, fields, values = {}, { submit = 'Speichern', o
         const out = {};
         for (const f of fields) {
           if (f.type === 'heading') continue;
-          if (f.type === 'photo') { out[f.name] = { ...photoState }; continue; }
           const inp = inputs[f.name];
           if (f.type === 'checkbox') { out[f.name] = inp.checked; continue; }
           let val = inp.value.trim();
@@ -320,20 +303,6 @@ export function toCSV(rows) {
   return '﻿' + rows.map((r) => r.map(cell).join(';')).join('\r\n');
 }
 export const downloadCSV = (name, rows) => download(name, toCSV(rows), 'text/csv;charset=utf-8');
-
-// Bild verkleinern (max. 1024 px) und als JPEG liefern
-export async function resizeImage(file, max = 1024, quality = 0.82) {
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('Bild konnte nicht gelesen werden.')); i.src = url; });
-    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-    const w = Math.round(img.naturalWidth * scale), h = Math.round(img.naturalHeight * scale);
-    const c = document.createElement('canvas'); c.width = w; c.height = h;
-    c.getContext('2d').drawImage(img, 0, 0, w, h);
-    return await new Promise((res) => c.toBlob(res, 'image/jpeg', quality));
-  } finally { URL.revokeObjectURL(url); }
-}
-export const blobToDataURL = (blob) => new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(blob); });
 
 // ---------- Kleine Bausteine ----------
 export function topbar(title, { back, actions = [], sub } = {}) {

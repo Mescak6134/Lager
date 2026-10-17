@@ -1,11 +1,10 @@
 // Service Worker: speichert die App-Dateien, damit sie schnell und auch offline startet.
 // Daten (Supabase) werden NIE zwischengespeichert – die kommen immer frisch.
-const VERSION = 'lager-v1.1.0';
+const VERSION = 'lager-v2.0.0';
 const SHELL = [
   './', './index.html', './style.css', './config.js', './manifest.webmanifest',
-  './js/app.js', './js/store.js', './js/db.js', './js/calc.js', './js/ui.js', './js/charts.js', './js/scanner.js', './js/exports.js', './js/mfa.js',
-  './js/views/overview.js', './js/views/stock.js', './js/views/book.js', './js/views/history.js', './js/views/more.js',
-  './js/views/settle.js', './js/views/inventory.js', './js/views/masterdata.js', './js/views/reports.js',
+  './js/app.js', './js/store.js', './js/db.js', './js/calc.js', './js/ui.js', './js/accounts.js', './js/mfa.js', './js/scanner.js', './js/exports.js',
+  './js/views/stock.js', './js/views/add.js', './js/views/history.js', './js/views/more.js', './js/views/inventory.js', './js/views/masterdata.js',
   './vendor/supabase-2.117.3.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-64.png',
 ];

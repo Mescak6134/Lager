@@ -1,234 +1,95 @@
-# Lager – Bestand, Einkäufe & Abrechnung
+# Lager – was gehört wem?
 
-Eine App für Handy und PC, mit der mehrere Leute gemeinsam festhalten:
+Eine einfache App fürs iPhone (und jeden Browser): Jeder sieht, **was ihm gehört** –
+mit **Menge**, **Einzelwert** und **Gesamtwert**. Dazu eine **Inventurliste** zum Drucken oder als PDF.
 
-- **was gekauft wurde** (wann, wo, wie viel, zu welchem Preis, Charge, Rechnung),
-- **wem was gehört** (auch wenn ein Einkauf aufgeteilt wird),
-- **wo es liegt** (Lagerorte),
-- **wer wem noch Geld schuldet** – und wie man das mit möglichst wenigen Zahlungen ausgleicht.
+- Anmelden mit **Benutzername + Passwort** und einem **6-stelligen Code** (Zwei-Faktor, auf dem iPhone per Face ID).
+- Höchstens **3 Benutzer**.
+- Die App läuft auf **https://pyrolagern.de** (GitHub Pages), die Daten liegen geschützt bei **Supabase**.
 
-Die App läuft kostenlos auf **GitHub Pages**, die Daten liegen geschützt in einer kostenlosen **Supabase**-Datenbank.
-Der Code ist öffentlich, **eure Daten nicht** – die sieht nur, wer eingeladen ist und sich mit Passwort
-**und** 6-stelligem Code (Zwei-Faktor) anmeldet. Es gibt höchstens **3 Benutzer**.
+Ausprobieren ohne Einrichtung: App öffnen → **„Andere Datenbank / Demo“** → **„Demo ansehen“** (nur Beispieldaten, nur auf dem Gerät).
 
 ---
 
-## ⚠️ Datenbank schon eingerichtet? Update vom 17.10.2026 ausführen
+## Einrichten (einmalig, ca. 10 Minuten)
 
-Wer `supabase-setup.sql` **vor dem 17.10.2026** ausgeführt hat, muss **einmal** das Update einspielen:
+### 1 · Datenbank-Skript ausführen
+1. In **Supabase** links **SQL Editor** → **New query**.
+2. Die Datei **`supabase-setup.sql`** öffnen und ganz oben bei **SCHRITT A** eintragen:
+   - deinen **Benutzernamen** (statt `BENUTZERNAME`, z. B. `mesut` – nur a–z, 0–9, Punkt, Minus),
+   - deinen **Namen** (statt `Anzeigename`, z. B. `Mesut`).
+3. Alles kopieren, in Supabase einfügen, **Run**. Unten muss **Success** stehen.
 
-1. In Supabase links **„SQL Editor“** → **„New query“**.
-2. Die Datei **`updates/2026-10-17-2fa.sql`** öffnen, **komplett** kopieren, einfügen, **„Run“**. Es muss „Success“ erscheinen.
-   Nichts anpassen – eure Daten bleiben, wie sie sind.
+> ⚠️ Findet das Skript noch die alte Version der App, löscht es **alles** (Tabellen und alle Konten) und baut neu auf.
+> Später darf es jederzeit nochmal laufen – dann bleiben eure Daten erhalten.
 
-Danach fragt die App jeden beim nächsten Öffnen (auch wer schon angemeldet ist) einmal nach der Einrichtung der Zwei-Faktor-Anmeldung
-(siehe [Schritt 6](#schritt-6--als-admin-registrieren)). Bis dahin zeigt die Datenbank niemandem etwas an.
+### 2 · Einstellungen in Supabase (Authentication)
+- **Sign In / Providers → Email**
+  - **Allow new users to sign up: AN** (wird zum Anlegen von Benutzern gebraucht)
+  - **Confirm email: AUS** (an die Benutzernamen geht keine E-Mail)
+- **Multi-Factor**: **TOTP** muss an sein (ist normalerweise schon so).
+- **URL Configuration → Site URL:** `https://pyrolagern.de`
 
----
+### 3 · Ersteinrichtung in der App
+App öffnen → unten **„Ersteinrichtung (Admin)“** → deinen Benutzernamen und ein **neues Passwort** eintragen →
+**Zwei-Faktor einrichten** (siehe unten) → fertig.
 
-## Erst mal ausprobieren (ohne Einrichtung)
+### 4 · Freunde anlegen
+**Mehr → Benutzer verwalten → Benutzer anlegen**: Name, Benutzername, Startpasswort (wird vorgeschlagen).
+Danach erscheint ein Text mit Adresse, Benutzername und Startpasswort → **Teilen** oder **Kopieren** und z. B. per WhatsApp schicken.
+Beim ersten Anmelden legt jeder ein **eigenes Passwort** fest und richtet die **Zwei-Faktor-Anmeldung** ein.
 
-App öffnen → **„Demo ansehen“**. Die Demo hat Beispieldaten (3 Personen, 10 Artikel, ~30 Buchungen).
-Alles bleibt nur auf dem Gerät, nichts wird verschickt.
+### 5 · Optional: Registrierung abschalten
+Wenn alle angelegt sind: in Supabase **Allow new users to sign up** wieder **AUS**.
+Für einen neuen Benutzer später kurz **AN**, anlegen, wieder **AUS**. (Die App sagt Bescheid, wenn es aus ist.)
 
----
-
-## Einrichten – einmalig, ca. 15 Minuten
-
-Du brauchst nur einen Browser. Programmieren musst du nichts.
-
-### Schritt 1 · Supabase-Projekt anlegen
-
-1. Auf **https://supabase.com** gehen → **„Start your project“** → mit deinem GitHub-Konto anmelden.
-2. **„New project“** anklicken.
-3. Name: `lager` · Datenbank-Passwort: irgendein langes Passwort (aufschreiben, braucht man aber normalerweise nie wieder) · Region: **Central EU (Frankfurt)**.
-4. **„Create new project“** – ca. 2 Minuten warten.
-
-### Schritt 2 · Datenbank einrichten
-
-1. In Supabase links auf **„SQL Editor“** → **„New query“**.
-2. Die Datei **`supabase-setup.sql`** aus diesem Repository öffnen, alles kopieren und dort einfügen.
-3. Ganz oben bei **SCHRITT A** deine **E-Mail-Adresse** und deinen **Namen** eintragen
-   (statt `DEINE-EMAIL@BEISPIEL.DE` und `Admin`). Mit dieser E-Mail wirst du **Admin**.
-4. Unten rechts auf **„Run“** klicken. Es muss **„Success“** erscheinen.
-   - Steht da **„STOPP: Bitte oben bei SCHRITT A …“** → du hast die E-Mail noch nicht eingetragen.
-
-### Schritt 3 · Anmelde-Einstellungen
-
-In Supabase links **„Authentication“**:
-
-1. **Sign In / Providers → Email**
-   - **„Allow new users to sign up“: AN lassen.** Keine Sorge: Registrieren können sich trotzdem nur Leute,
-     die vorher in der App eingeladen wurden – das prüft die Datenbank selbst.
-   - **„Confirm email“: Empfehlung AUS** (einfacher, man kann sofort loslegen).
-     Wenn du es AN lässt, bekommt jeder nach dem Registrieren eine E-Mail mit Bestätigungs-Link – auch ok.
-2. **Multi-Factor** (bzw. **Sign In / Providers → Multi-Factor Authentication**)
-   - **TOTP (App Authenticator)** muss **eingeschaltet** sein. Das ist bei Supabase normalerweise schon so.
-3. **URL Configuration**
-   - **Site URL:** die Adresse deiner App, z. B. `https://pyrolagern.de/`
-   - **Redirect URLs:** dieselbe Adresse nochmal hinzufügen.
-   - (Wird für „Passwort vergessen“ und Bestätigungs-Links gebraucht.)
-
-### Schritt 4 · Verbindung in `config.js` eintragen
-
-1. In Supabase: **Project Settings** (Zahnrad) →
-   - **Data API**: dort steht die **Project URL** (`https://xxxx.supabase.co`).
-   - **API Keys**: den **Publishable key** kopieren (beginnt mit `sb_publishable_…`).
-     Gibt es den nicht, den **„anon public“** Key nehmen.
-2. Auf GitHub in diesem Repository die Datei **`config.js`** öffnen → Stift-Symbol (Bearbeiten).
-3. Die zwei Werte einsetzen:
-   ```js
-   export const SUPABASE_URL = 'https://xxxx.supabase.co';
-   export const SUPABASE_KEY = 'sb_publishable_…';
-   ```
-4. **„Commit changes“** klicken.
-
-> ⚠️ **Niemals** den **secret** / **service_role** Schlüssel eintragen! Der öffentliche Schlüssel ist dafür gemacht,
-> sichtbar zu sein – die Daten sind trotzdem durch die Regeln in der Datenbank geschützt.
-
-### Schritt 5 · GitHub Pages einschalten
-
-1. Im Repository auf **Settings → Pages**.
-2. **Source:** „Deploy from a branch“ · **Branch:** `main` und `/ (root)` → **Save**.
-3. Nach 1–2 Minuten steht oben die Adresse der App (z. B. `https://pyrolagern.de/`).
-   Genau diese Adresse bei Schritt 3 als Site URL eintragen.
-
-### Schritt 6 · Als Admin registrieren
-
-App öffnen → **„Konto erstellen“** → genau die E-Mail aus Schritt 2 → Passwort (mind. 8 Zeichen).
-
-Danach kommt **einmalig „Zwei-Faktor einrichten“** (Pflicht für alle):
-
-1. Auf dem iPhone auf **„Zur iPhone-Passwörter-App hinzufügen“** tippen.
-2. Die Passwörter-App fragt, wo der Code gespeichert werden soll → den Eintrag für **pyrolagern.de** wählen
-   (oder neu anlegen).
-3. Zurück zur App und den **6-stelligen Code** eintippen, den die Passwörter-App anzeigt.
-
-Ab dann schlägt das iPhone den Code bei jeder Anmeldung **über der Tastatur** vor – antippen, Face ID, fertig.
-(Ohne iPhone: QR-Code mit einer Authenticator-App scannen, z. B. Google Authenticator.)
-
-### Schritt 7 · Freunde einladen
-
-In der App: **Mehr → Benutzer verwalten → Person einladen** → Name und E-Mail eintragen.
-Danach **„Einladung teilen“** antippen und z. B. per WhatsApp schicken.
-Die Person öffnet die App, tippt auf **„Konto erstellen“**, registriert sich mit genau dieser E-Mail
-und richtet die Zwei-Faktor-Anmeldung ein (wie in Schritt 6).
-
-Es gibt **höchstens 3 aktive Benutzer** (Anzeige „x von 3 Benutzern“). Für jemand Neuen muss vorher
-eine Person deaktiviert werden.
-
-### Schritt 7b · Wenn alle registriert sind: Registrierung abschalten
-
-Sobald **alle 3** ihr Konto erstellt haben, in Supabase **Authentication → Sign In / Providers → Email**
-die Option **„Allow new users to sign up“ AUSschalten**. Dann kann sich gar niemand mehr neu registrieren –
-auch nicht mit einer Einladung. (Für eine neue Person später kurz wieder einschalten.)
-
-### Schritt 8 · Auf dem Handy installieren
-
-- **iPhone (Safari):** Teilen-Symbol → **„Zum Home-Bildschirm“** → „Hinzufügen“.
-- **Android (Chrome):** Menü ⋮ → **„App installieren“**.
-
-Danach startet die App wie eine normale App vom Startbildschirm.
+### 6 · Aufs iPhone holen
+In **Safari** pyrolagern.de öffnen → **Teilen-Symbol** → **„Zum Home-Bildschirm“** → **Hinzufügen**.
+Die App bleibt angemeldet – auch nach dem Schließen. Nur auf einem neuen Gerät fragt sie wieder nach Passwort und Code.
 
 ---
 
-## Was die App alles kann
+## Zwei-Faktor einrichten (iPhone)
+1. Auf **„Zur iPhone-Passwörter-App hinzufügen“** tippen.
+2. Die Passwörter-App fragt, wo der Code hin soll → Eintrag für **pyrolagern.de** wählen (oder neu anlegen).
+3. Zurück in die App und den **6-stelligen Code** eingeben.
 
-| Bereich | Was geht |
-|---|---|
-| **Übersicht** | Kennzahlen (Artikel, Bestandswert, Ausgaben im Monat, offene Beträge), Ausgaben-Diagramm, Bestandswert je Person, Warnungen bei wenig Bestand, letzte Buchungen |
-| **Bestand** | Alle Artikel mit Menge je Person, Filter nach Person / Lagerort / Kategorie, Suche, Barcode-Scan |
-| **Artikel-Seite** | Foto, Bestand je Person, je Lagerort und je Charge, Durchschnittspreis, Wert, alle Buchungen |
-| **Buchen** | **Einkauf** (aufteilen auf mehrere Personen, „bezahlt von“, Preis wird nach Menge aufgeteilt), **Abgang** (Verbrauch, Verkauf, Korrektur), **Übertragen** an andere Person oder **Umlagern** an anderen Ort |
-| **Verlauf** | Alle Buchungen mit Filtern, Details, Löschen (eigene Buchungen; Admins alle) |
-| **Abrechnung** | Kontostand je Person, **wenigste Zahlungen zum Ausgleichen**, „Ausgleich buchen“, Verlauf der Zahlungen |
-| **Inventur** | Artikel der Reihe nach zählen, Unterschiede werden automatisch als Korrektur gebucht |
-| **Stammdaten** | Artikel, Hersteller, Händler, Lagerorte, Kategorien – anlegen, bearbeiten, archivieren |
-| **Suche** | Über Artikel, Hersteller, Händler, Lagerorte, Chargen und Rechnungsnummern |
-| **Berichte** | Bestandsliste, Verlauf, Abrechnung zum **Drucken / als PDF**, CSV für Excel, komplette **Datensicherung** (JSON) |
-| **Benutzer** | Höchstens 3. Admin lädt ein, vergibt Rollen (Admin / Mitglied), kann Zugang deaktivieren und die Zwei-Faktor-Anmeldung zurücksetzen |
-| **Zwei-Faktor** | Pflicht für alle: Passwort + 6-stelliger Code (auf dem iPhone per Face ID automatisch ausgefüllt) |
-| **Protokoll** | Jede Änderung wird automatisch festgehalten: wer, wann, was – kann niemand bearbeiten oder löschen |
-| **Offline** | Ohne Internet siehst du den zuletzt geladenen Stand (nur ansehen) |
-
-Der **Barcode-Scanner** funktioniert in Browsern, die das unterstützen (z. B. Chrome auf Android).
-Auf dem iPhone wird der Knopf einfach ausgeblendet – Artikel findet man dort über die Suche.
+Ab dann schlägt das iPhone den Code bei der Anmeldung über der Tastatur vor – antippen, Face ID, fertig.
 
 ---
 
-## Sicherheit – kurz erklärt
-
-- **Nur Eingeladene** können sich registrieren. Wer nicht in der Liste steht, bekommt „nicht eingeladen“.
-- **Zwei-Faktor ist Pflicht** und wird von der **Datenbank** geprüft, nicht nur von der App: Wer nur das Passwort hat,
-  bekommt keine einzige Zeile zu sehen – auch keine Fotos.
-- Höchstens **3 aktive Benutzer** – auch das prüft die Datenbank.
-- Jede Tabelle ist mit **Row Level Security** geschützt: Ohne gültigen Login eines aktiven Mitglieds liefert die Datenbank **nichts**.
-- **Bestand kann nicht unter 0** fallen – das prüft die Datenbank bei jeder Buchung (je Person, Lagerort und Charge).
-- Buchungen kann man nicht nachträglich verändern, nur löschen – und auch das steht im Protokoll.
-- **Fotos** liegen in einem privaten Speicher, nur Mitglieder bekommen kurzzeitig gültige Links.
-- Nur **Admins** können Personen einladen, Rollen ändern oder den Zugang sperren. Es bleibt immer mindestens ein Admin.
-
----
+## Passwort vergessen?
+Ein **Admin** öffnet **Mehr → Benutzer verwalten** und tippt bei der Person auf **„Neues Startpasswort“**.
+Die Person meldet sich damit an und legt gleich ein eigenes Passwort fest. Die Zwei-Faktor-Anmeldung bleibt.
 
 ## Handy verloren?
+Ein **Admin** tippt bei der Person auf **„2FA zurücksetzen“** – die Person wird überall abgemeldet und richtet den
+Code auf dem neuen Handy neu ein. War das Passwort im Handy gespeichert: zusätzlich **„Neues Startpasswort“**.
 
-**Ein Freund hat sein Handy verloren:**
-Ein Admin öffnet **Mehr → Benutzer verwalten** und tippt bei der Person auf **„2FA zurücksetzen“**.
-Damit wird der alte Code gelöscht und die Person wird auf allen Geräten abgemeldet (das verlorene Handy fliegt raus).
-Danach meldet sie sich mit ihrem Passwort an und richtet den Code auf dem neuen Handy neu ein.
-Wenn das Passwort auch im verlorenen Handy gespeichert war: danach gleich unter *Mehr → Mein Konto* ein neues Passwort setzen.
+**Der Admin selbst hat sein Handy verloren** (und es gibt keinen zweiten Admin): in Supabase **SQL Editor** diese Zeile
+ausführen (Benutzernamen anpassen), dann in der App anmelden und den Code neu einrichten:
 
-**Der Admin selbst hat sein Handy verloren:**
-- Gibt es einen zweiten Admin, kann der das wie oben zurücksetzen.
-- Sonst: In Supabase links **„SQL Editor“** → **„New query“**, diese Zeile einfügen, die E-Mail ersetzen, **„Run“**:
+```sql
+delete from auth.mfa_factors where user_id = (select user_id from public.members where username = 'BENUTZERNAME');
+```
 
-  ```sql
-  delete from auth.mfa_factors where user_id = (select user_id from public.members where email = 'DEINE-EMAIL@BEISPIEL.DE');
-  ```
-
-  Danach in der App mit dem Passwort anmelden und die Zwei-Faktor-Anmeldung neu einrichten.
-
-> Tipp: Mindestens **zwei Admins** machen das Leben leichter (*Benutzer verwalten → Bearbeiten → Rolle*).
+Tipp: Zwei Admins machen das einfacher (*Benutzer verwalten → Bearbeiten → Rolle*).
 
 ---
 
-## Häufige Fragen
+## So funktioniert's im Alltag
+- **Bestand** (Start): Gesamtwert, Wert je Person, Liste mit Menge, Einzelwert (Durchschnitt) und Gesamtwert. Antippen → Details.
+- **＋ Hinzufügen**: **Zugang** (auch neuen Artikel direkt anlegen, auf mehrere Personen aufteilen), **Entnahme**, **Übertragen**.
+- **Verlauf**: alle Buchungen, eigene löschen, Export für Excel.
+- **Mehr**: Inventur, **Inventurliste** (Drucken/PDF/Excel, je Person oder alle, mit Unterschriftszeilen), Stammdaten,
+  Benutzer, Mein Konto, Änderungsprotokoll, Datensicherung.
 
-**„Der Code stimmt nicht“**
-→ Den **aktuellen** Code nehmen (er wechselt alle 30 Sekunden). Stimmt er immer wieder nicht, ist die Uhrzeit
-am Handy falsch – in den Einstellungen „Automatisch einstellen“ einschalten.
+## Sicherheit kurz
+- Ohne Passwort **und** Code zeigt die **Datenbank** nichts an – das prüft Supabase selbst, nicht nur die App.
+- Konten gibt es nur für Benutzer, die der Admin angelegt hat. Höchstens 3 aktive Benutzer.
+- Bestand kann nie unter 0 fallen. Jede Änderung steht im Änderungsprotokoll.
 
-**„Maximal 3 Benutzer möglich“**
-→ Es sind schon 3 Personen aktiv. Zuerst jemanden unter *Benutzer verwalten → Bearbeiten* deaktivieren.
-
-**„Diese E-Mail-Adresse ist nicht eingeladen“**
-→ Ein Admin muss die Person zuerst unter *Mehr → Benutzer verwalten* mit **genau dieser** E-Mail einladen.
-
-**„Kein Zugang“ nach dem Login**
-→ Die Person wurde deaktiviert oder mit einer anderen E-Mail eingeladen. Admin fragen.
-
-**Die App zeigt „Die Datenbank ist noch nicht eingerichtet“**
-→ Schritt 2 (SQL) wurde noch nicht ausgeführt oder ist fehlgeschlagen. Einfach nochmal ausführen – das schadet nicht.
-
-**Passwort vergessen?**
-→ Auf dem Login-Bildschirm „Passwort vergessen?“ – es kommt eine E-Mail mit Link. (Dafür muss Schritt 3 „URL Configuration“ stimmen.)
-
-**Supabase hat das Projekt „pausiert“**
-→ Kostenlose Supabase-Projekte schlafen nach ca. einer Woche ohne Benutzung ein. Im Supabase-Dashboard auf **„Restore project“** klicken – die Daten bleiben erhalten.
-
-**Wie bekomme ich eine neue Version der App aufs Handy?**
-→ Automatisch: Sobald das Handy online ist, lädt die App die neueste Version.
-
----
-
-## Technik (für Neugierige)
-
-- Reines HTML/CSS/JavaScript, kein Build-Schritt. Läuft direkt auf GitHub Pages.
-- `index.html`, `style.css` – Oberfläche · `js/` – App-Logik · `js/views/` – die einzelnen Seiten
-- `js/db.js` – Datenzugriff (Supabase oder lokale Demo) · `js/calc.js` – Bestand, Werte, Schulden, Ausgleich
-- `supabase-setup.sql` – komplette Datenbank: Tabellen, Regeln (RLS), Zwei-Faktor-Pflicht, Prüfungen, Protokoll, Foto-Speicher
-- `updates/` – Updates für schon eingerichtete Datenbanken (jeweils einmal im SQL Editor ausführen)
-- `js/mfa.js` – Zwei-Faktor einrichten und abfragen (Supabase MFA, TOTP)
-- Die Grenze von 3 Benutzern steht in der Datenbank-Funktion `public.max_members()`.
-- `sw.js` + `manifest.webmanifest` – damit es eine installierbare App (PWA) ist und offline startet
-- `vendor/supabase-2.117.3.js` – die offizielle Supabase-Bibliothek (MIT-Lizenz), fest eingebunden
+## Technik
+Reines HTML/CSS/JavaScript ohne Build-Schritt. `supabase-setup.sql` ist die komplette Datenbank.
+Benutzernamen werden intern zu `<benutzername>@pyrolagern.de` (nur für Supabase, nie sichtbar) – festgelegt in `js/accounts.js` (`LOGIN_DOMAIN`).
+Die Supabase-Bibliothek liegt in `vendor/` (MIT-Lizenz).

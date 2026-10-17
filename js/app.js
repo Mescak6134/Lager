@@ -1,73 +1,52 @@
-// Start der App: Verbindung, Anmeldung, Navigation.
+// Start der App: Verbindung, Anmeldung (Benutzername), Pflicht-Passwort, Zwei-Faktor, Navigation.
 import * as CONFIG from '../config.js';
 import { createSupabaseBackend, createDemoBackend, friendlyError, demoExists } from './db.js';
 import { S, hooks, reload, setData, loadSnapshot, clearSnapshot, isDemo } from './store.js';
 import { el, clear, icon, toast } from './ui.js';
-import { overview } from './views/overview.js';
+import { loginEmail, displayLogin, normalizeUsername, validUsername } from './accounts.js';
+import { enrollScreen, challengeScreen } from './mfa.js';
 import { stock, itemDetail } from './views/stock.js';
-import { book } from './views/book.js';
+import { add } from './views/add.js';
 import { history as historyView } from './views/history.js';
-import { more, account, logView, users } from './views/more.js';
-import { settle } from './views/settle.js';
+import { more, account, logView, users, inventoryList } from './views/more.js';
 import { inventory } from './views/inventory.js';
 import { masterdata } from './views/masterdata.js';
-import { reports, report, search } from './views/reports.js';
-import { enrollScreen, challengeScreen } from './mfa.js';
 
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
 const offlineBanner = document.getElementById('offline');
 
 const ROUTES = {
-  uebersicht: overview, bestand: stock, artikel: itemDetail, buchen: book, verlauf: historyView, mehr: more,
-  abrechnung: settle, inventur: inventory, stammdaten: masterdata, suche: search, berichte: reports, bericht: report,
-  benutzer: users, konto: account, protokoll: logView,
+  bestand: stock, artikel: itemDetail, plus: add, verlauf: historyView, mehr: more,
+  inventur: inventory, inventurliste: inventoryList, stammdaten: masterdata, benutzer: users, konto: account, protokoll: logView,
 };
-const NAV = [
-  ['uebersicht', 'Übersicht', 'home'],
-  ['bestand', 'Bestand', 'box'],
-  ['buchen', 'Buchen', 'plus'],
-  ['verlauf', 'Verlauf', 'list'],
-  ['mehr', 'Mehr', 'menu'],
-];
+const NAV = [['bestand', 'Bestand', 'box'], ['plus', 'Hinzufügen', 'plus'], ['verlauf', 'Verlauf', 'list'], ['mehr', 'Mehr', 'menu']];
 const NAV_OF = { artikel: 'bestand' };
 
-let screen = 'loading'; // loading | setup | login | recovery | noaccess | main
+let screen = 'loading'; // loading | setup | login | firstrun | password | mfa | noaccess | main
 let lastRoute = '';
 
-// ---------------------------------------------------------------------
 function parseRoute() {
   const raw = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   const [path, query] = raw.split('?');
-  const parts = (path || 'uebersicht').split('/').filter(Boolean);
-  const q = Object.fromEntries(new URLSearchParams(query || ''));
-  return { parts, q, key: raw };
+  const parts = (path || 'bestand').split('/').filter(Boolean);
+  return { parts, q: Object.fromEntries(new URLSearchParams(query || '')), key: raw };
 }
 
 async function renderMain() {
   const r = parseRoute();
-  const view = ROUTES[r.parts[0]] || overview;
-  const active = NAV_OF[r.parts[0]] || (NAV.some(([k]) => k === r.parts[0]) ? r.parts[0] : 'mehr');
-  renderNav(active);
-  const scrollY = window.scrollY;
+  const view = ROUTES[r.parts[0]] || stock;
+  const active = NAV_OF[r.parts[0]] || (NAV.some(([k]) => k === r.parts[0]) ? r.parts[0] : ROUTES[r.parts[0]] ? 'mehr' : 'bestand');
+  clear(nav).append(...NAV.map(([k, label, ic]) =>
+    el('a', { href: '#' + k, class: k === 'plus' ? 'plus' : '', 'aria-current': k === active ? 'page' : null }, icon(ic), el('span', { text: label }))));
+  const y = window.scrollY;
   let node;
-  try {
-    node = await view(r);
-  } catch (e) {
-    console.error(e);
-    node = el('div', { class: 'error', text: 'Fehler beim Anzeigen: ' + (e.message || e) });
-  }
+  try { node = await view(r); } catch (e) { console.error(e); node = el('div', { class: 'error', text: 'Fehler beim Anzeigen: ' + (e.message || e) }); }
   clear(app).append(node);
-  if (r.key !== lastRoute) { window.scrollTo(0, 0); lastRoute = r.key; } else window.scrollTo(0, scrollY);
+  if (r.key !== lastRoute) { window.scrollTo(0, 0); lastRoute = r.key; } else window.scrollTo(0, y);
   document.body.classList.remove('no-nav');
   nav.hidden = false;
 }
-
-function renderNav(active) {
-  clear(nav).append(...NAV.map(([k, label, ic]) =>
-    el('a', { href: '#' + k, class: k === 'buchen' ? 'plus' : '', 'aria-current': k === active ? 'page' : null }, icon(ic), el('span', { text: label }))));
-}
-
 hooks.render = () => { if (screen === 'main') renderMain(); };
 window.addEventListener('hashchange', () => { if (screen === 'main') renderMain(); });
 
@@ -78,18 +57,18 @@ function showScreen(name, node) {
   clear(app).append(node);
   window.scrollTo(0, 0);
 }
+function logo(sub) {
+  return el('div', { class: 'logo' }, el('img', { src: 'icons/icon-192.png', alt: '' }), el('h1', { text: 'Lager' }), el('p', { class: 'sub', text: sub || 'Was gehört wem – und was ist es wert?' }));
+}
+const splash = (t) => el('div', { class: 'splash' }, el('img', { src: 'icons/icon-192.png', alt: '', width: 72, height: 72 }), el('p', { text: t }));
 
 // ---------------------------------------------------------------------
 //  Start
 // ---------------------------------------------------------------------
 function storedConfig() {
-  const url = String(CONFIG.SUPABASE_URL || '');
-  const key = String(CONFIG.SUPABASE_KEY || '');
-  if (/^https:\/\//.test(url) && key && !key.startsWith('HIER-')) return { url, key, fromFile: true };
-  try {
-    const c = JSON.parse(localStorage.getItem('lager-config'));
-    if (c && c.url && c.key) return c;
-  } catch { /* */ }
+  const url = String(CONFIG.SUPABASE_URL || ''), key = String(CONFIG.SUPABASE_KEY || '');
+  if (/^https:\/\//.test(url) && key && !key.startsWith('HIER-')) return { url, key };
+  try { const c = JSON.parse(localStorage.getItem('lager-config')); if (c && c.url && c.key) return c; } catch { /* */ }
   return null;
 }
 
@@ -98,9 +77,7 @@ async function boot() {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installPrompt = e; });
   window.addEventListener('online', onOnline);
   window.addEventListener('offline', () => updateOffline());
-
-  const mode = localStorage.getItem('lager-mode');
-  if (mode === 'demo') return startDemo();
+  if (localStorage.getItem('lager-mode') === 'demo') return startDemo();
   const cfg = storedConfig();
   if (!cfg) return showSetup();
   return startSupabase(cfg);
@@ -116,60 +93,35 @@ async function startDemo() {
 }
 
 async function startSupabase(cfg) {
-  const hash = location.hash;
-  const isRecovery = /type=recovery/.test(hash);
-  const hashError = /error_description=([^&]+)/.exec(hash);
-  try {
-    S.backend = await createSupabaseBackend(cfg.url, cfg.key);
-  } catch (e) {
-    return offlineOr(e);
-  }
-  if (/access_token=|error_description=/.test(hash)) window.history.replaceState(null, '', location.pathname + location.search);
-
+  try { S.backend = await createSupabaseBackend(cfg.url, cfg.key); } catch (e) { return offlineOr(e); }
   S.backend.onAuthChange((event, session) => {
     S.session = session;
-    if (event === 'PASSWORD_RECOVERY') showRecovery();
-    else if (event === 'SIGNED_OUT' && screen !== 'login' && screen !== 'setup') showLogin();
+    if (event === 'SIGNED_OUT' && !['login', 'setup', 'firstrun'].includes(screen)) showLogin();
   });
-
   let session = null;
   try { session = await S.backend.getSession(); } catch { /* offline */ }
   S.session = session;
-  if (isRecovery && session) return showRecovery();
-  if (!session) return showLogin(hashError ? linkError(decodeURIComponent(hashError[1].replace(/\+/g, ' '))) : null);
+  if (!session) return showLogin();
   return afterLogin();
 }
 
-function linkError(msg) {
-  if (/expired|invalid/i.test(msg)) return 'Der Link ist abgelaufen oder wurde schon benutzt. Bitte nochmal anfordern.';
-  return msg;
-}
-
+// Nach dem Anmelden (oder beim Öffnen mit gespeicherter Anmeldung)
 async function afterLogin() {
-  showScreen('loading', el('div', { class: 'splash' }, el('img', { src: 'icons/icon-192.png', alt: '', width: 72, height: 72 }), el('p', { text: 'Lade Daten …' })));
+  showScreen('loading', splash('Lade Daten …'));
   let me;
-  try {
-    me = await S.backend.claimMembership();
-  } catch (e) {
-    return offlineOr(e);
-  }
-  if (!me) return showNoAccess('Dein Konto ist nicht als Mitglied eingetragen. Bitte frag euren Admin, dich mit genau dieser E-Mail-Adresse einzuladen.');
+  try { me = await S.backend.claimMembership(); } catch (e) { return offlineOr(e); }
+  if (!me) return showNoAccess('Dieses Konto gehört zu keinem Benutzer der App.');
   if (!me.active) return showNoAccess('Dein Zugang wurde deaktiviert. Bitte wende dich an euren Admin.');
   S.me = me;
-
-  // Zwei-Faktor ist Pflicht: ohne Code liefert die Datenbank ohnehin nichts.
   if (S.backend.mode === 'supabase') {
     let st;
-    try { st = await S.backend.mfaState(); } catch (e) { return offlineOr(e); }
+    try { st = await S.backend.authState(); } catch (e) { return offlineOr(e); }
+    // 1. Startpasswort? Erst eigenes Passwort (wer schon einen Code hat, gibt ihn vorher ein – Supabase verlangt dann aal2)
+    if (st.mustChangePassword && !(st.verified.length && st.level !== 'aal2')) return showMustChangePassword();
+    // 2. Zwei-Faktor ist Pflicht
     if (st.level !== 'aal2') {
-      const done = async (factorId, code, msg) => {
-        await S.backend.mfaVerify(factorId, code);
-        if (msg) toast(msg);
-        await afterLogin();
-      };
-      if (st.verified.length) {
-        return showScreen('mfa', challengeScreen({ logo, onLogout: logout, verify: (code) => done(st.verified[0].id, code) }));
-      }
+      const done = async (factorId, code, msg) => { await S.backend.mfaVerify(factorId, code); if (msg) toast(msg); await afterLogin(); };
+      if (st.verified.length) return showScreen('mfa', challengeScreen({ logo, onLogout: logout, verify: (code) => done(st.verified[0].id, code) }));
       let factorId = null;
       return showScreen('mfa', enrollScreen({
         logo, onLogout: logout,
@@ -180,19 +132,14 @@ async function afterLogin() {
     S.mfa = st.verified[0] || null;
     try { S.maxMembers = await S.backend.maxMembers(); } catch { /* bleibt 3 */ }
   }
-
-  try {
-    await reload({ silent: true });
-  } catch (e) {
-    return offlineOr(e);
-  }
+  try { await reload({ silent: true }); } catch (e) { return offlineOr(e); }
   enterMain();
 }
 
 function enterMain() {
   screen = 'main';
   updateOffline();
-  if (!location.hash || location.hash === '#') window.history.replaceState(null, '', '#uebersicht');
+  if (!location.hash || location.hash === '#') window.history.replaceState(null, '', '#bestand');
   renderMain();
 }
 
@@ -200,22 +147,14 @@ function enterMain() {
 function offlineOr(e) {
   const snap = loadSnapshot();
   if (snap && (!navigator.onLine || /Verbindung|geladen/.test(friendlyError(e).message))) {
-    S.me = snap.me;
-    setData(snap.data);
-    S.readonly = true;
-    S.snapshotAt = snap.at;
+    S.me = snap.me; setData(snap.data); S.readonly = true; S.snapshotAt = snap.at;
     S.session = S.session || { user: { id: snap.me.user_id } };
-    screen = 'main';
-    updateOffline(true);
-    renderMain();
+    screen = 'main'; updateOffline(true); renderMain();
     return;
   }
-  showScreen('error', el('div', { class: 'auth' },
-    logo(),
-    el('div', { class: 'error', text: friendlyError(e).message }),
+  showScreen('error', el('div', { class: 'auth' }, logo(), el('div', { class: 'error', text: friendlyError(e).message }),
     el('button', { class: 'btn primary block', onclick: () => location.reload() }, icon('refresh'), 'Nochmal versuchen')));
 }
-
 function updateOffline(force) {
   const off = force || !navigator.onLine;
   offlineBanner.hidden = !(off && screen === 'main' && !isDemo());
@@ -224,167 +163,151 @@ function updateOffline(force) {
 async function onOnline() {
   offlineBanner.hidden = true;
   if (screen !== 'main' || isDemo()) return;
-  try {
-    if (!S.backend) return location.reload();
-    await reload();
-    toast('Wieder online – Daten aktualisiert.');
-  } catch { updateOffline(true); }
+  try { if (!S.backend) return location.reload(); await reload(); toast('Wieder online – Daten aktualisiert.'); } catch { updateOffline(true); }
 }
-
+// App kommt aus dem Hintergrund: Anmeldung auffrischen, Daten neu laden
 document.addEventListener('visibilitychange', async () => {
-  if (document.visibilityState !== 'visible' || screen !== 'main' || isDemo() || S.readonly) return;
+  if (document.visibilityState !== 'visible' || !S.backend || isDemo()) return;
+  await S.backend.resume();
+  if (screen !== 'main' || S.readonly) return;
   try { await reload(); } catch { /* still */ }
 });
 
 // ---------------------------------------------------------------------
 //  Bildschirme ohne Anmeldung
 // ---------------------------------------------------------------------
-function logo(sub) {
-  return el('div', { class: 'logo' },
-    el('img', { src: 'icons/icon-192.png', alt: '' }),
-    el('h1', { text: 'Lager' }),
-    el('p', { class: 'sub', text: sub || 'Bestand, Einkäufe und Abrechnung' }));
-}
-
 function showSetup() {
   const url = el('input', { type: 'url', placeholder: 'https://xxxx.supabase.co', autocomplete: 'off', autocapitalize: 'none' });
-  const key = el('input', { type: 'text', placeholder: 'sb_publishable_… oder eyJ…', autocomplete: 'off', autocapitalize: 'none' });
+  const key = el('input', { type: 'text', placeholder: 'sb_publishable_…', autocomplete: 'off', autocapitalize: 'none' });
   const err = el('div', { class: 'error', hidden: true });
   showScreen('setup', el('div', { class: 'auth' },
-    logo('Willkommen! Noch ist keine Datenbank verbunden.'),
+    logo('Noch ist keine Datenbank verbunden.'),
     el('div', { class: 'card' },
       el('h2', { text: 'Erst mal ausprobieren' }),
       el('p', { class: 'sub', text: 'Die Demo zeigt die App mit Beispieldaten. Alles bleibt nur auf diesem Gerät.' }),
       el('button', { class: 'btn primary block mt', onclick: () => startDemo() }, icon('box'), demoExists() ? 'Demo öffnen' : 'Demo ansehen')),
-    el('div', { class: 'card' },
-      el('h2', { text: 'Eigene Datenbank verbinden' }),
-      el('p', { class: 'sub', text: 'Normalerweise trägt man das einmal in config.js ein (siehe Anleitung). Zum Testen geht es auch hier:' }),
+    el('details', { class: 'card' },
+      el('summary', { text: 'Eigene Datenbank verbinden' }),
+      el('p', { class: 'sub', text: 'Normalerweise steht das fest in config.js. Zum Testen geht es auch hier:' }),
       err,
       el('label', { class: 'field mt' }, el('span', { class: 'lbl', text: 'Supabase Project URL' }), url),
-      el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Publishable / anon Key' }), key),
+      el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Publishable Key' }), key),
       el('button', { class: 'btn block', onclick: () => {
         const u = url.value.trim().replace(/\/+$/, ''), k = key.value.trim();
-        if (!/^https:\/\/.+/.test(u) || k.length < 20) { err.textContent = 'Bitte URL (beginnt mit https://) und Schlüssel eintragen.'; err.hidden = false; return; }
-        if (/service_role|sb_secret_/.test(k)) { err.textContent = 'Das ist der geheime Schlüssel! Bitte den öffentlichen "publishable" bzw. "anon" Schlüssel nehmen.'; err.hidden = false; return; }
+        if (!/^https:\/\/.+/.test(u) || k.length < 20) { err.textContent = 'Bitte URL (https://…) und Schlüssel eintragen.'; err.hidden = false; return; }
+        if (/service_role|sb_secret_/.test(k)) { err.textContent = 'Das ist der geheime Schlüssel! Bitte den öffentlichen „publishable“ Schlüssel nehmen.'; err.hidden = false; return; }
         localStorage.setItem('lager-config', JSON.stringify({ url: u, key: k }));
         location.reload();
       } }, 'Verbinden'))));
 }
 
-function showLogin(message, tab = 'login') {
-  const email = el('input', { type: 'email', name: 'username', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', required: true, placeholder: 'name@beispiel.de' });
-  const pw = el('input', { type: 'password', name: 'password', autocomplete: tab === 'login' ? 'current-password' : 'new-password', required: true, minlength: 8, passwordrules: tab === 'signup' ? 'minlength: 8; required: lower; required: upper; required: digit;' : null });
-  const pw2 = el('input', { type: 'password', name: 'password2', autocomplete: 'new-password', minlength: 8 });
-  const err = el('div', { class: 'error', hidden: !message || tab === 'sent', text: message || '' });
-  const info = el('div', { class: 'info', hidden: true });
-  const btn = el('button', { type: 'submit', class: 'btn primary block', text: tab === 'login' ? 'Einloggen' : 'Konto erstellen' });
-  const form = el('form', { onsubmit: async (e) => {
-    e.preventDefault();
-    err.hidden = true; info.hidden = true;
-    const em = email.value.trim(), p = pw.value;
-    if (!em || !p) { err.textContent = 'Bitte E-Mail und Passwort eingeben.'; err.hidden = false; return; }
-    if (tab === 'signup') {
-      if (p.length < 8) { err.textContent = 'Das Passwort muss mindestens 8 Zeichen haben.'; err.hidden = false; return; }
-      if (p !== pw2.value) { err.textContent = 'Die beiden Passwörter sind nicht gleich.'; err.hidden = false; return; }
-    }
-    btn.disabled = true;
-    try {
-      if (tab === 'login') {
-        await S.backend.signIn(em, p);
-        S.session = await S.backend.getSession();
-        await afterLogin();
-      } else {
-        const r = await S.backend.signUp(em, p);
-        if (r.needsConfirm) {
-          info.textContent = 'Fast geschafft! Wir haben dir eine E-Mail geschickt. Tippe auf den Link darin – danach kannst du dich hier einloggen.';
-          info.hidden = false;
-        } else {
-          S.session = await S.backend.getSession();
-          await afterLogin();
-        }
-      }
-    } catch (ex) {
-      err.textContent = friendlyError(ex).message; err.hidden = false;
-    } finally { btn.disabled = false; }
-  } },
-  err, info,
-  el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'E-Mail' }), email),
-  el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Passwort' }), pw),
-  tab === 'signup' ? el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Passwort wiederholen' }), pw2,
-    el('span', { class: 'hint', text: 'Mindestens 8 Zeichen.' })) : null,
-  btn);
+function passwordInput(autocomplete) {
+  return el('input', { type: 'password', name: autocomplete === 'current-password' ? 'password' : 'new-password', autocomplete, minlength: 8,
+    passwordrules: autocomplete === 'new-password' ? 'minlength: 8; required: lower; required: upper; required: digit;' : null });
+}
+const userInput = (props = {}) => el('input', { type: 'text', name: 'username', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', placeholder: 'z. B. benni', ...props });
 
+function showLogin(message) {
+  const user = userInput({ required: true });
+  const pw = passwordInput('current-password');
+  const err = el('div', { class: 'error', hidden: !message, text: message || '' });
+  const btn = el('button', { type: 'submit', class: 'btn primary block', text: 'Anmelden' });
+  const firstRun = el('div', { class: 'center' });
   showScreen('login', el('div', { class: 'auth' },
     logo(),
-    el('div', { class: 'seg two-seg', role: 'tablist' },
-      el('button', { type: 'button', role: 'tab', 'aria-selected': tab === 'login' ? 'true' : 'false', text: 'Einloggen', onclick: () => showLogin(null, 'login') }),
-      el('button', { type: 'button', role: 'tab', 'aria-selected': tab === 'signup' ? 'true' : 'false', text: 'Konto erstellen', onclick: () => showLogin(null, 'signup') })),
-    el('div', { class: 'card' },
-      tab === 'signup' ? el('p', { class: 'sub', text: 'Nur mit Einladung: Ein Admin muss deine E-Mail vorher in der App eingetragen haben.' }) : null,
-      form,
-      tab === 'login' ? el('div', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn', text: 'Passwort vergessen?', onclick: () => showForgot(email.value) })) : null),
+    el('form', { class: 'card', onsubmit: async (e) => {
+      e.preventDefault(); err.hidden = true;
+      if (!user.value.trim() || !pw.value) { err.textContent = 'Bitte Benutzername und Passwort eingeben.'; err.hidden = false; return; }
+      btn.disabled = true;
+      try {
+        await S.backend.signIn(loginEmail(user.value), pw.value);
+        S.session = await S.backend.getSession();
+        await afterLogin();
+      } catch (ex) { err.textContent = friendlyError(ex).message; err.hidden = false; } finally { btn.disabled = false; }
+    } },
+    err,
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Benutzername' }), user),
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Passwort' }), pw),
+    btn,
+    el('p', { class: 'sub center mt', text: 'Passwort vergessen? Frag euren Admin – er gibt dir ein neues Startpasswort.' })),
+    firstRun,
     el('div', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn small-link', text: 'Andere Datenbank / Demo', onclick: resetConnection }))));
+  // Ersteinrichtung nur anbieten, wenn der Admin noch kein Konto hat (oder per ?ersteinrichtung)
+  const forced = new URLSearchParams(location.search).has('ersteinrichtung');
+  (forced ? Promise.resolve(true) : S.backend.setupPending()).then((pending) => {
+    if (pending) firstRun.append(el('button', { type: 'button', class: 'linkbtn', id: 'firstrun-link', text: 'Ersteinrichtung (Admin)', onclick: showFirstRun }));
+  }).catch(() => {});
 }
 
 function resetConnection() {
   try { localStorage.removeItem('lager-config'); localStorage.removeItem('lager-mode'); } catch { /* */ }
-  if (storedConfig()) { toast('Die Verbindung ist fest in config.js eingetragen.'); showSetupFromLogin(); return; }
+  if (storedConfig()) { toast('Die Verbindung steht fest in config.js.'); showSetup(); return; }
   location.reload();
 }
-function showSetupFromLogin() { showSetup(); }
 
-function showForgot(prefill) {
-  const email = el('input', { type: 'email', name: 'username', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', value: prefill || '' });
-  const msg = el('div', { class: 'info', hidden: true });
+// Ersteinrichtung: der Admin legt sein Passwort fest (Benutzername aus dem Datenbank-Skript)
+function showFirstRun() {
+  const user = userInput({ required: true });
+  const pw = passwordInput('new-password');
+  const pw2 = el('input', { type: 'password', name: 'new-password-2', autocomplete: 'new-password', minlength: 8 });
   const err = el('div', { class: 'error', hidden: true });
-  showScreen('login', el('div', { class: 'auth' },
-    logo('Passwort zurücksetzen'),
-    el('div', { class: 'card' },
-      el('p', { class: 'sub', text: 'Gib deine E-Mail ein. Du bekommst einen Link, mit dem du ein neues Passwort festlegst.' }),
-      msg, err,
-      el('form', { onsubmit: async (e) => {
-        e.preventDefault(); err.hidden = true;
-        try {
-          await S.backend.resetPassword(email.value.trim());
-          msg.textContent = 'Wenn die Adresse bei uns registriert ist, ist jetzt eine E-Mail unterwegs. Bitte Postfach (und Spam) prüfen.';
-          msg.hidden = false;
-        } catch (ex) { err.textContent = friendlyError(ex).message; err.hidden = false; }
-      } },
-      el('label', { class: 'field mt' }, el('span', { class: 'lbl', text: 'E-Mail' }), email),
-      el('button', { type: 'submit', class: 'btn primary block', text: 'Link schicken' }))),
-    el('div', { class: 'center' }, el('button', { class: 'linkbtn', text: 'Zurück zum Login', onclick: () => showLogin() }))));
+  const btn = el('button', { type: 'submit', class: 'btn primary block', text: 'Konto anlegen' });
+  showScreen('firstrun', el('div', { class: 'auth' },
+    logo('Ersteinrichtung'),
+    el('div', { class: 'info', text: 'Nur einmal für den Admin: Benutzername aus dem Datenbank-Skript eintragen und ein eigenes Passwort festlegen. Danach richtest du die Zwei-Faktor-Anmeldung ein.' }),
+    el('form', { class: 'card', onsubmit: async (e) => {
+      e.preventDefault(); err.hidden = true;
+      const u = normalizeUsername(user.value);
+      if (!validUsername(u)) { err.textContent = 'Bitte deinen Benutzernamen eintragen (3–20 Zeichen).'; err.hidden = false; return; }
+      if (pw.value.length < 8) { err.textContent = 'Das Passwort muss mindestens 8 Zeichen haben.'; err.hidden = false; return; }
+      if (pw.value !== pw2.value) { err.textContent = 'Die beiden Passwörter sind nicht gleich.'; err.hidden = false; return; }
+      btn.disabled = true;
+      try {
+        const r = await S.backend.signUpSelf(loginEmail(u), pw.value, u);
+        if (r.needsConfirm) { err.textContent = 'In Supabase ist „Confirm email“ eingeschaltet. Bitte ausschalten (Authentication → Sign In / Providers → Email) und dann hier anmelden.'; err.hidden = false; return; }
+        S.session = await S.backend.getSession();
+        await afterLogin();
+      } catch (ex) { err.textContent = friendlyError(ex).message; err.hidden = false; } finally { btn.disabled = false; }
+    } },
+    err,
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Benutzername' }), user),
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Neues Passwort' }), pw, el('span', { class: 'hint', text: 'Mindestens 8 Zeichen. Das iPhone kann eins vorschlagen.' })),
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Passwort wiederholen' }), pw2),
+    btn),
+    el('div', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn', text: 'Zurück zum Anmelden', onclick: () => showLogin() }))));
 }
 
-function showRecovery() {
-  const pw = el('input', { type: 'password', name: 'password', autocomplete: 'new-password', minlength: 8 });
-  const pw2 = el('input', { type: 'password', name: 'password2', autocomplete: 'new-password', minlength: 8 });
-  const user = el('input', { type: 'email', name: 'username', autocomplete: 'username', value: S.session?.user?.email || '', readonly: true, class: 'sr-only', tabindex: -1, 'aria-hidden': 'true' });
-  const err = el('div', { class: 'error', hidden: true });
-  showScreen('recovery', el('div', { class: 'auth' },
+// Erste Anmeldung mit Startpasswort: eigenes Passwort festlegen
+function showMustChangePassword() {
+  const user = userInput({ value: displayLogin(S.session?.user?.email || ''), readonly: true, class: 'readonly' });
+  const pw = passwordInput('new-password');
+  const pw2 = el('input', { type: 'password', name: 'new-password-2', autocomplete: 'new-password', minlength: 8 });
+  const err = el('div', { class: 'error', hidden: true, role: 'alert' });
+  const btn = el('button', { type: 'submit', class: 'btn primary block' }, icon('check'), 'Passwort speichern');
+  showScreen('password', el('div', { class: 'auth' },
     logo('Neues Passwort festlegen'),
+    el('div', { class: 'info', text: 'Willkommen! Leg jetzt dein eigenes Passwort fest – dein iPhone kann eins vorschlagen und sicher speichern. Danach richtest du die Zwei-Faktor-Anmeldung ein.' }),
     el('form', { class: 'card', onsubmit: async (e) => {
       e.preventDefault(); err.hidden = true;
       if (pw.value.length < 8) { err.textContent = 'Mindestens 8 Zeichen.'; err.hidden = false; return; }
       if (pw.value !== pw2.value) { err.textContent = 'Die beiden Passwörter sind nicht gleich.'; err.hidden = false; return; }
-      try {
-        await S.backend.updatePassword(pw.value);
-        toast('Passwort geändert.');
-        await afterLogin();
-      } catch (ex) { err.textContent = friendlyError(ex).message; err.hidden = false; }
+      btn.disabled = true;
+      try { await S.backend.setOwnPassword(pw.value); toast('Passwort gespeichert.'); await afterLogin(); }
+      catch (ex) { err.textContent = friendlyError(ex).message; err.hidden = false; } finally { btn.disabled = false; }
     } },
-    err, user,
-    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Neues Passwort' }), pw),
+    err,
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Benutzername' }), user),
+    el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Neues Passwort' }), pw, el('span', { class: 'hint', text: 'Mindestens 8 Zeichen.' })),
     el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Nochmal' }), pw2),
-    el('button', { type: 'submit', class: 'btn primary block', text: 'Speichern' }))));
+    btn),
+    el('div', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn small-link', text: 'Abmelden', onclick: logout }))));
 }
 
 function showNoAccess(text) {
-  showScreen('noaccess', el('div', { class: 'auth' },
-    logo(),
+  showScreen('noaccess', el('div', { class: 'auth' }, logo(),
     el('div', { class: 'card' },
-      el('h2', { text: 'Kein Zugang' }),
-      el('p', { text }),
-      el('p', { class: 'sub', text: 'Angemeldet als: ' + (S.session?.user?.email || '') }),
+      el('h2', { text: 'Kein Zugang' }), el('p', { text }),
+      el('p', { class: 'sub', text: 'Angemeldet als: ' + displayLogin(S.session?.user?.email || '') }),
       el('button', { class: 'btn block mt', onclick: logout }, icon('logout'), 'Abmelden'))));
 }
 
@@ -393,20 +316,18 @@ export async function logout() {
   try { localStorage.removeItem('lager-mfa-pending'); } catch { /* */ }
   if (isDemo()) {
     try { localStorage.removeItem('lager-mode'); } catch { /* */ }
-    location.hash = '';
-    location.reload();
+    location.hash = ''; location.reload();
     return;
   }
   await S.backend.signOut();
-  S.me = null; S.data = null; S.D = null; S.photos.clear();
+  S.me = null; S.data = null; S.D = null;
   showLogin();
 }
 hooks.logout = logout;
 
-// ---------------------------------------------------------------------
 function registerSW() {
   if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-  navigator.serviceWorker.register('sw.js').catch(() => { /* egal */ });
+  navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
 boot().catch((e) => {
