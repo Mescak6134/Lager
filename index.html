@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#111827">
+  <meta name="color-scheme" content="light dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Lager">
+  <title>Lager</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="offline" class="offline-banner" hidden>Keine Internetverbindung – du siehst den zuletzt geladenen Stand. Buchen geht erst wieder online.</div>
+  <main id="app" aria-live="polite">
+    <div class="splash"><img src="icons/icon-192.png" alt="" width="72" height="72"><p>Lade …</p></div>
+  </main>
+  <nav id="nav" class="nav" hidden aria-label="Hauptmenü"></nav>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript><p class="pad">Bitte JavaScript aktivieren.</p></noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
