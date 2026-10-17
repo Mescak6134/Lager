@@ -5,6 +5,7 @@ import { S, hooks, reload, setData, loadSnapshot, clearSnapshot, isDemo } from '
 import { el, clear, icon, toast } from './ui.js';
 import { loginEmail, displayLogin, normalizeUsername, validUsername } from './accounts.js';
 import { enrollScreen, challengeScreen } from './mfa.js';
+import { fireworksShow, burstAt } from './fireworks.js';
 import { stock, itemDetail } from './views/stock.js';
 import { add } from './views/add.js';
 import { history as historyView } from './views/history.js';
@@ -25,6 +26,7 @@ const NAV_OF = { artikel: 'bestand' };
 
 let screen = 'loading'; // loading | setup | login | firstrun | password | mfa | noaccess | main
 let lastRoute = '';
+const shown = { login: false, main: false }; // Feuerwerk nur einmal je App-Start
 
 function parseRoute() {
   const raw = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
@@ -58,9 +60,10 @@ function showScreen(name, node) {
   window.scrollTo(0, 0);
 }
 function logo(sub) {
-  return el('div', { class: 'logo' }, el('img', { src: 'icons/icon-192.png', alt: '' }), el('h1', { text: 'Lager' }), el('p', { class: 'sub', text: sub || 'Was gehört wem – und was ist es wert?' }));
+  const img = el('img', { src: 'icons/icon-192.png', alt: 'Lager', class: 'logo-img', onclick: () => burstAt(img) });
+  return el('div', { class: 'logo' }, img, el('h1', { text: 'Lager' }), el('p', { class: 'sub', text: sub || 'Was gehört wem – und was ist es wert?' }));
 }
-const splash = (t) => el('div', { class: 'splash' }, el('img', { src: 'icons/icon-192.png', alt: '', width: 72, height: 72 }), el('p', { text: t }));
+const splash = (t) => el('div', { class: 'splash' }, el('img', { src: 'icons/icon-192.png', alt: '', width: 88, height: 88, class: 'splash-img' }), el('p', { text: t }));
 
 // ---------------------------------------------------------------------
 //  Start
@@ -141,6 +144,7 @@ function enterMain() {
   updateOffline();
   if (!location.hash || location.hash === '#') window.history.replaceState(null, '', '#bestand');
   renderMain();
+  if (!shown.main) { shown.main = true; fireworksShow(); }
 }
 
 // Ohne Verbindung: letzten Stand zeigen (nur lesen)
@@ -199,6 +203,7 @@ function showSetup() {
         localStorage.setItem('lager-config', JSON.stringify({ url: u, key: k }));
         location.reload();
       } }, 'Verbinden'))));
+  if (!shown.login) { shown.login = true; fireworksShow(); }
 }
 
 function passwordInput(autocomplete) {
@@ -232,6 +237,7 @@ function showLogin(message) {
     el('p', { class: 'sub center mt', text: 'Passwort vergessen? Frag euren Admin – er gibt dir ein neues Startpasswort.' })),
     firstRun,
     el('div', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn small-link', text: 'Andere Datenbank / Demo', onclick: resetConnection }))));
+  if (!shown.login) { shown.login = true; fireworksShow(); }
   // Ersteinrichtung nur anbieten, wenn der Admin noch kein Konto hat (oder per ?ersteinrichtung)
   const forced = new URLSearchParams(location.search).has('ersteinrichtung');
   (forced ? Promise.resolve(true) : S.backend.setupPending()).then((pending) => {

@@ -1,50 +1,38 @@
+/* =====================================================================
+   Silvester-Design (nur dunkel): Nachthimmel, Champagner-Gold, Feuerwerksfarben
+   Alle Textfarben mit mindestens 4,5:1 Kontrast auf den Flächen (WCAG AA).
+   ===================================================================== */
 :root {
-  --bg: #f3f4f6;
-  --surface: #ffffff;
-  --surface-2: #f9fafb;
-  --border: #e5e7eb;
-  --text: #111827;
-  --muted: #6b7280;
-  --accent: #d97706;
-  --accent-strong: #b45309;
-  --accent-text: #ffffff;
-  --btn: #b45309;
-  --accent-soft: #fef3c7;
-  --green: #15803d;
-  --green-soft: #dcfce7;
-  --red: #b91c1c;
-  --red-soft: #fee2e2;
-  --blue: #1d4ed8;
-  --blue-soft: #dbeafe;
-  --shadow: 0 1px 2px rgba(0, 0, 0, .06), 0 1px 3px rgba(0, 0, 0, .08);
-  --radius: 14px;
-  --nav-h: 64px;
+  --bg: #070b1a;                 /* Mitternacht */
+  --bg-2: #0d1538;
+  --surface: rgba(22, 30, 64, .62);      /* Glas */
+  --surface-solid: #141c3c;
+  --surface-2: rgba(255, 255, 255, .06);
+  --border: rgba(255, 255, 255, .11);
+  --text: #f6f1e4;               /* warmes Weiß  – 16:1 */
+  --muted: #b9bfd8;              /* gedämpft     – 9:1  */
+  --accent: #f2c86b;             /* Champagner-Gold */
+  --accent-strong: #ffd98a;
+  --accent-text: #1c1406;        /* Text auf Gold – 11:1 */
+  --accent-soft: rgba(242, 200, 107, .16);
+  --btn: #f2c86b;
+  --magenta: #ff5fae;
+  --cyan: #5fdcff;
+  --amber: #ffb347;
+  --green: #6ee7a8;
+  --green-soft: rgba(110, 231, 168, .15);
+  --red: #ff9a9a;
+  --red-soft: rgba(255, 110, 110, .16);
+  --blue: #8fd0ff;
+  --blue-soft: rgba(95, 220, 255, .14);
+  --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+  --glow: 0 0 0 1px rgba(255, 217, 138, .35), 0 6px 22px rgba(242, 200, 107, .35);
+  --radius: 16px;
+  --nav-h: 66px;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
-  color-scheme: light;
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0b1120;
-    --surface: #111827;
-    --surface-2: #1f2937;
-    --border: #273244;
-    --text: #f3f4f6;
-    --muted: #9ca3af;
-    --accent: #f59e0b;
-    --accent-strong: #fbbf24;
-    --accent-text: #111827;
-    --btn: #f59e0b;
-    --accent-soft: #3a2a07;
-    --green: #4ade80;
-    --green-soft: #12301f;
-    --red: #f87171;
-    --red-soft: #3b1414;
-    --blue: #93c5fd;
-    --blue-soft: #172554;
-    --shadow: none;
-    color-scheme: dark;
-  }
+  --font-display: "Big Shoulders Display", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
+  color-scheme: dark;
 }
 
 * { box-sizing: border-box; }
@@ -551,3 +539,225 @@ select.sort { width: 8.5rem; }
 .pos-t { color: var(--green); }
 .neg-t { color: var(--red); }
 .ok-line { color: var(--green); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+
+/* =====================================================================
+   SILVESTER-SCHICHT
+   ===================================================================== */
+html { background: var(--bg); }
+body { background: transparent; }
+
+/* Nachthimmel mit Sternen (fest, keine Layout-Verschiebung) */
+.sky {
+  position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden;
+  background:
+    radial-gradient(120% 70% at 50% -10%, #1b2a6b 0%, rgba(27, 42, 107, 0) 60%),
+    radial-gradient(60% 40% at 0% 100%, rgba(255, 95, 174, .10), rgba(255, 95, 174, 0) 70%),
+    radial-gradient(60% 40% at 100% 85%, rgba(95, 220, 255, .08), rgba(95, 220, 255, 0) 70%),
+    linear-gradient(180deg, #0b1230 0%, #070b1a 55%, #04060f 100%);
+}
+.sky::before, .sky::after { content: ''; position: absolute; inset: -50px; background-repeat: repeat; }
+.sky::before {
+  background-image:
+    radial-gradient(1px 1px at 20px 30px, rgba(255, 255, 255, .85), transparent),
+    radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, .6), transparent),
+    radial-gradient(1.5px 1.5px at 200px 150px, rgba(255, 236, 200, .9), transparent),
+    radial-gradient(1px 1px at 60px 190px, rgba(255, 255, 255, .5), transparent),
+    radial-gradient(1px 1px at 260px 40px, rgba(255, 255, 255, .7), transparent);
+  background-size: 300px 220px;
+  opacity: .7;
+}
+.sky::after {
+  background-image:
+    radial-gradient(1px 1px at 40px 60px, rgba(255, 255, 255, .9), transparent),
+    radial-gradient(1.5px 1.5px at 170px 20px, rgba(255, 226, 160, .9), transparent),
+    radial-gradient(1px 1px at 230px 170px, rgba(200, 235, 255, .8), transparent);
+  background-size: 340px 260px;
+  animation: twinkle 6s ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: .25; } to { opacity: .85; } }
+/* Ohne Bewegung: statisches goldenes Leuchten statt Feuerwerk */
+.sparkle-static .sky { box-shadow: inset 0 140px 160px -60px rgba(242, 200, 107, .22); }
+
+/* Feuerwerk-Canvas: hinter dem Inhalt, nie im Weg */
+canvas.fw { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 0; pointer-events: none; }
+#app { position: relative; z-index: 1; }
+
+/* Statusleiste */
+body::before { background: rgba(7, 11, 26, .82); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+
+/* Schrift: festliche, schmale Überschriften */
+h1, h2, .topbar h1, .logo h1, dialog h2, .hero-v, .kpi-v, .total-value, .report-head h1 {
+  font-family: var(--font-display); letter-spacing: .01em;
+}
+.topbar h1 { font-size: 2rem; font-weight: 800; line-height: 1.05; }
+.card h2, dialog h2, h2.section { font-weight: 700; }
+.card h2 { font-size: 1.3rem; }
+dialog h2 { font-size: 1.5rem; }
+h2.section { font-family: var(--font-display); font-size: 1.05rem; letter-spacing: .08em; color: var(--accent); }
+.day { color: var(--muted); }
+a { color: var(--accent-strong); }
+
+/* Glas-Karten */
+.card, .kpi {
+  background: rgba(20, 28, 62, .78); border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.hero, .auth .card, .kpi, dialog, .toast, .nav, .seg {
+  -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+}
+.hero, .auth .card, .kpi { background: var(--surface); }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .hero, .auth .card, .kpi, .card, dialog, .toast, .nav { background: var(--surface-solid); }
+}
+
+/* Gesamtwert-Karte mit goldenem Schimmer */
+.hero {
+  position: relative; overflow: hidden; cursor: pointer;
+  border: 1px solid rgba(242, 200, 107, .35);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, .4), inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+.hero::after {
+  content: ''; position: absolute; right: -40px; top: -60px; width: 200px; height: 200px; pointer-events: none;
+  background: radial-gradient(circle, rgba(242, 200, 107, .28), rgba(242, 200, 107, 0) 65%);
+}
+.hero .kpi-l { color: var(--accent); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; font-size: .75rem; }
+.hero-v { color: #ffe6b0; font-size: 3rem; font-weight: 800; line-height: 1; margin: 4px 0 2px; text-shadow: 0 0 22px rgba(242, 200, 107, .35); }
+.kpi-v { font-size: 1.6rem; font-weight: 800; }
+.three-kpi .kpi-v { font-size: 1.3rem; }
+
+/* Countdown-Chips */
+.countdowns { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: -4px 0 12px; }
+.cd {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 30px; padding: 4px 12px 4px 10px; border-radius: 99px;
+  font-size: .8rem; font-weight: 600; white-space: nowrap; max-width: 100%;
+  color: var(--accent-strong); background: rgba(242, 200, 107, .09); border: 1px solid rgba(242, 200, 107, .35);
+}
+.cd-sale { color: #ffc2e0; background: rgba(255, 95, 174, .09); border-color: rgba(255, 95, 174, .4); }
+.cd-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; animation: pulse 2.4s ease-in-out infinite; flex: none; }
+@keyframes pulse { 50% { opacity: .35; transform: scale(.7); } }
+
+/* Knöpfe */
+.btn { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); color: var(--text); }
+.btn:active { background: rgba(255, 255, 255, .1); }
+.btn.primary {
+  background: linear-gradient(180deg, #ffe39f 0%, #f2c86b 55%, #e2a944 100%); border-color: #f7d88f; color: var(--accent-text);
+  box-shadow: var(--glow); text-shadow: 0 1px 0 rgba(255, 255, 255, .3);
+}
+.btn.primary:active { box-shadow: 0 0 0 1px rgba(255, 217, 138, .5), 0 3px 12px rgba(242, 200, 107, .3); }
+.btn.primary:disabled { box-shadow: none; }
+.btn.danger { color: var(--red); }
+.btn.danger-fill { background: #b8323f; border-color: #b8323f; color: #fff; }
+.icon-btn { color: var(--text); }
+.icon-btn:active { background: rgba(255, 255, 255, .08); }
+.linkbtn { color: var(--accent-strong); }
+.small-link { color: var(--muted); }
+
+/* Eingaben */
+input[type=text], input[type=email], input[type=password], input[type=date], input[type=search], input[type=url], select, textarea {
+  background-color: rgba(4, 7, 20, .6); border: 1px solid rgba(255, 255, 255, .16); color: var(--text);
+}
+input::placeholder, textarea::placeholder { color: #9aa2c0; }
+input:focus, select:focus, textarea:focus { border-color: rgba(242, 200, 107, .7); outline: 2px solid rgba(242, 200, 107, .55); outline-offset: 1px; }
+input[readonly], .readonly { background-color: rgba(255, 255, 255, .05); color: var(--muted); }
+select option { background: #141c3c; color: var(--text); }
+.field > span.lbl, .lbl.block { color: #e9e4d6; }
+input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: .7; }
+.checkrow input, .radio-row input { accent-color: var(--accent); }
+
+/* Chips */
+.chip { background: rgba(255, 255, 255, .06); border-color: rgba(255, 255, 255, .14); color: var(--text); }
+.chip[aria-pressed="true"] { background: linear-gradient(180deg, #ffe39f, #f2c86b); color: var(--accent-text); border-color: #f7d88f; box-shadow: 0 0 14px rgba(242, 200, 107, .3); }
+.chip[aria-pressed="true"] small { opacity: .85; }
+
+/* Segment-Auswahl (Zugang / Entnahme / Übertragen) */
+.seg { background: rgba(255, 255, 255, .05); border-color: var(--border); }
+.seg button { color: var(--muted); }
+.seg button[aria-selected="true"] { background: rgba(242, 200, 107, .16); color: var(--accent-strong); box-shadow: inset 0 0 0 1px rgba(242, 200, 107, .45); }
+
+/* Abzeichen, Hinweise */
+.badge { background: rgba(255, 255, 255, .08); color: var(--muted); }
+.badge.warn { background: var(--red-soft); color: #ffb3b3; }
+.badge.in { background: var(--green-soft); color: var(--green); }
+.badge.move { background: var(--blue-soft); color: var(--blue); }
+.badge.arch { background: var(--accent-soft); color: var(--accent-strong); }
+.info { background: rgba(95, 220, 255, .1); color: #d3f2ff; border: 1px solid rgba(95, 220, 255, .22); }
+.error { background: rgba(255, 110, 110, .14); color: #ffd0d0; border: 1px solid rgba(255, 110, 110, .3); }
+.demo-flag { background: rgba(95, 220, 255, .14); color: var(--cyan); }
+.menu-ic { background: var(--accent-soft); color: var(--accent); }
+.avatar { background: linear-gradient(180deg, #ffe39f, #e2a944); color: var(--accent-text); }
+
+/* Listen */
+.inv-name { color: var(--text); }
+.c-value { color: #ffe0a0; }
+.bar { background: rgba(255, 255, 255, .08); }
+.bar > span, .progress span { background: linear-gradient(90deg, #e2a944, #ffd98a); box-shadow: 0 0 10px rgba(242, 200, 107, .4); }
+.progress { background: rgba(255, 255, 255, .08); }
+@media (max-width: 640px) {
+  .inv-table tr { background: rgba(20, 28, 62, .78); border-color: var(--border); }
+  .inv-table tbody tr:active { background: rgba(32, 42, 88, .9); }
+}
+.inv-table tbody tr:hover td { background: rgba(255, 255, 255, .04); }
+.total-row { background: var(--accent-soft); border-color: rgba(242, 200, 107, .35); }
+.total-value { color: #ffe0a0; font-size: 1.5rem; }
+.new-item { background: rgba(255, 255, 255, .04); border-left: 3px solid var(--accent); }
+.split-box { background: rgba(255, 255, 255, .03); border-color: rgba(255, 255, 255, .16); }
+.thumb.ph { background: rgba(255, 255, 255, .07); color: var(--accent); }
+
+/* Untere Leiste: Glas, Gold, großes ＋ */
+.nav { background: rgba(8, 12, 30, .76); border-top: 1px solid rgba(255, 255, 255, .09); }
+.nav a { color: #aeb5cf; }
+.nav a[aria-current="page"] { color: var(--accent-strong); }
+.nav a[aria-current="page"] .icon { filter: drop-shadow(0 0 6px rgba(242, 200, 107, .55)); }
+.nav a.plus .icon {
+  width: 54px; height: 54px; padding: 13px; margin-top: -22px; border-radius: 50%;
+  background: linear-gradient(180deg, #ffe39f, #e2a944); color: var(--accent-text);
+  box-shadow: 0 0 0 4px rgba(7, 11, 26, .9), 0 0 22px rgba(242, 200, 107, .55);
+}
+.nav a.plus[aria-current="page"] .icon { background: linear-gradient(180deg, #fff0c8, #f2c86b); }
+
+/* Meldungen und Dialoge */
+.toast { background: rgba(16, 22, 50, .92); color: var(--text); border: 1px solid rgba(242, 200, 107, .45); box-shadow: 0 10px 30px rgba(0, 0, 0, .5), 0 0 18px rgba(242, 200, 107, .2); }
+.toast.bad { background: rgba(110, 24, 36, .95); color: #ffe3e3; border-color: rgba(255, 140, 140, .6); }
+dialog { background: rgba(18, 25, 56, .94); color: var(--text); border: 1px solid rgba(242, 200, 107, .25); box-shadow: 0 24px 60px rgba(0, 0, 0, .6); }
+dialog::backdrop { background: rgba(2, 4, 12, .72); }
+.offline-banner { background: var(--amber); color: #1c1406; }
+.share-text, .secret { background: rgba(255, 255, 255, .05); border-color: var(--border); }
+
+/* Anmelden, Ladebildschirm */
+.auth .logo img, .splash img {
+  border-radius: 22px; cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(242, 200, 107, .35), 0 0 36px rgba(242, 200, 107, .35);
+}
+.auth .logo h1 { font-size: 2.6rem; font-weight: 800; color: #ffe6b0; text-shadow: 0 0 24px rgba(242, 200, 107, .35); }
+.auth .logo .sub { color: var(--muted); }
+.splash { color: var(--muted); }
+.splash img { animation: glowpulse 1.8s ease-in-out infinite; }
+@keyframes glowpulse { 50% { box-shadow: 0 0 0 1px rgba(242, 200, 107, .5), 0 0 56px rgba(242, 200, 107, .55); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .sky::after, .cd-dot, .splash img { animation: none; }
+  * { scroll-behavior: auto !important; }
+}
+
+/* Feinschliff Silvester */
+.user-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.user-actions .btn { white-space: normal; line-height: 1.15; min-height: 44px; padding: 6px 10px; font-size: .875rem; }
+select.sort { width: 9.4rem; }
+@media (max-width: 440px) {
+  .filters.three { grid-template-columns: 1fr 1fr; }
+  .filters.three > :last-child { grid-column: span 2; }
+}
+
+/* =====================================================================
+   DRUCK (Inventurliste): schlicht schwarz auf weiß – Thema aus
+   ===================================================================== */
+@media print {
+  :root { --bg: #fff; --surface: #fff; --surface-solid: #fff; --surface-2: #f3f4f6; --text: #000; --muted: #444; --border: #bbb; --accent: #000; --accent-strong: #000; }
+  html, body { background: #fff !important; color: #000 !important; }
+  .sky, canvas.fw, .countdowns, .nav, .toast, .offline-banner, .no-print { display: none !important; }
+  body::before { display: none !important; }
+  .card, .kpi, .hero { background: #fff !important; box-shadow: none !important; -webkit-backdrop-filter: none !important; backdrop-filter: none !important; border-color: #bbb !important; }
+  h1, h2, .report-head h1, .report-sec h2 { color: #000 !important; text-shadow: none !important; }
+  .sub, .print-tbl th { color: #444 !important; }
+  .print-tbl td { color: #000 !important; }
+}
+

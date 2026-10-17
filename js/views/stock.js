@@ -4,11 +4,13 @@ import { el, icon, topbar, iconBtn, fmtMoney, fmtUnitMoney, fmtNum, fmtQty, empt
 import { getBarcode, barcodeLabel, barcodeIcon } from '../scanner.js';
 import { editItem, toggleArchive, kpi } from './masterdata.js';
 import { entryList } from './history.js';
+import { burst } from '../fireworks.js';
+import { silvesterText, saleText } from '../silvester.js';
 
 export function stock() {
   const f = (S.ui.stock ||= { text: '', person: '', cat: '', sort: 'name' });
   const search = el('input', { type: 'search', placeholder: 'Suchen …', value: f.text, enterkeyhint: 'search', 'aria-label': 'Suchen' });
-  const hero = el('section', { class: 'card hero', 'aria-live': 'polite' });
+  const hero = el('section', { class: 'card hero', 'aria-live': 'polite', onclick: (e) => burst(e.clientX, e.clientY) });
   const personChips = el('div', { class: 'chips', role: 'group', 'aria-label': 'Person' });
   const body = el('div');
 
@@ -58,6 +60,7 @@ export function stock() {
         if (hit) go('#artikel/' + hit.id); else { search.value = code; draw(); toast('Kein Artikel mit diesem Barcode.', true); }
       }),
     ] }),
+    countdowns(),
     hero,
     personChips,
     catChips,
@@ -65,6 +68,14 @@ export function stock() {
       el('div', { class: 'search grow' }, icon('search'), search),
       selectEl([['name', 'Nach Name'], ['wert', 'Nach Wert'], ['menge', 'Nach Menge']], f.sort, { class: 'sort', 'aria-label': 'Sortieren nach', onchange: (e) => { f.sort = e.target.value; draw(); } })),
     body);
+}
+
+// Zwei kleine Countdowns: Silvester und erster Verkaufstag
+function countdowns() {
+  const sale = saleText();
+  return el('div', { class: 'countdowns', role: 'group', 'aria-label': 'Countdown' },
+    el('span', { class: 'cd cd-nye' }, el('span', { class: 'cd-dot', 'aria-hidden': 'true' }), silvesterText()),
+    sale ? el('span', { class: 'cd cd-sale' }, el('span', { class: 'cd-dot', 'aria-hidden': 'true' }), sale) : null);
 }
 
 // Tabelle auf breiten Bildschirmen, Karten auf dem Handy – gleiche Zeilen, CSS entscheidet

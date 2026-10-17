@@ -4,6 +4,7 @@ import { el, icon, topbar, fmtMoney, fmtUnitMoney, fmtQty, parseNum, today, roun
 import { lotKey, EPS } from '../calc.js';
 import { friendlyError } from '../db.js';
 import { getBarcode, barcodeLabel, barcodeIcon } from '../scanner.js';
+import { burst } from '../fireworks.js';
 
 const TABS = [['zugang', 'Zugang'], ['entnahme', 'Entnahme'], ['uebertrag', 'Übertragen']];
 const UNITS = ['Stück', 'g', 'kg', 'ml', 'l', 'm', 'Packung', 'Dose', 'Karton', 'Rolle', 'Paar'];
@@ -159,6 +160,7 @@ function inForm(st) {
       item_id: itemId, splits, unit_value: uv, happened_on: st.date, location_id: st.location_id || null, batch: st.batch.trim() || null, note: st.note.trim() || null,
     }), `Zugang gespeichert: ${fmtQty(total, unitTxt())} ${name}`);
     submit.disabled = false;
+    if (okRun) burst(window.innerWidth / 2, window.innerHeight - 150, { count: 40 });
     if (okRun) Object.assign(st, { item_id: itemId, newItem: false, ni: { name: '', manufacturer: '', category_id: '', unit: 'Stück' }, qty: '', unitValue: '', batch: '', note: '', splits: {} });
     else if (st.newItem) { st.newItem = false; st.item_id = itemId; go(location.hash); } // Artikel ist angelegt – nur die Buchung fehlt
   } },
