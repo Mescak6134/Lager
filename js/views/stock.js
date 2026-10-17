@@ -1,7 +1,7 @@
 // Bestand: was ist da, wem gehört es, wo liegt es
 import { S, go, memberName, qtyText, locName, catOf, manName, activeMembers, activeOf, lotLabel } from '../store.js';
 import { el, icon, topbar, iconBtn, fmtMoney, fmtNum, empty, selectEl, toast, fmtQty } from '../ui.js';
-import { canScan, scanBarcode } from '../scanner.js';
+import { getBarcode, barcodeLabel, barcodeIcon } from '../scanner.js';
 import { exportStockCSV } from '../exports.js';
 import { thumb, editItem, toggleArchive, kpi } from './masterdata.js';
 import { entryList } from './history.js';
@@ -41,13 +41,13 @@ export function stock() {
   draw();
   return el('div', null,
     topbar('Bestand', { actions: [
-      canScan() ? iconBtn('scan', 'Barcode scannen', async () => {
-        const code = await scanBarcode();
+      iconBtn(barcodeIcon(), barcodeLabel(), async () => {
+        const code = await getBarcode();
         if (!code) return;
         const hit = S.data.items.find((i) => i.ean === code);
         if (hit) go('#artikel/' + hit.id);
         else { search.value = code; draw(); toast('Kein Artikel mit diesem Barcode.', true); }
-      }) : null,
+      }),
       iconBtn('download', 'Als CSV (Excel) speichern', exportStockCSV),
       iconBtn('print', 'Drucken / PDF', () => go('#bericht/bestand')),
     ].filter(Boolean) }),

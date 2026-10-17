@@ -12,6 +12,7 @@ import { settle } from './views/settle.js';
 import { inventory } from './views/inventory.js';
 import { masterdata } from './views/masterdata.js';
 import { reports, report, search } from './views/reports.js';
+import { enrollScreen, challengeScreen } from './mfa.js';
 
 const app = document.getElementById('app');
 const nav = document.getElementById('nav');
@@ -155,6 +156,31 @@ async function afterLogin() {
   if (!me) return showNoAccess('Dein Konto ist nicht als Mitglied eingetragen. Bitte frag euren Admin, dich mit genau dieser E-Mail-Adresse einzuladen.');
   if (!me.active) return showNoAccess('Dein Zugang wurde deaktiviert. Bitte wende dich an euren Admin.');
   S.me = me;
+
+  // Zwei-Faktor ist Pflicht: ohne Code liefert die Datenbank ohnehin nichts.
+  if (S.backend.mode === 'supabase') {
+    let st;
+    try { st = await S.backend.mfaState(); } catch (e) { return offlineOr(e); }
+    if (st.level !== 'aal2') {
+      const done = async (factorId, code, msg) => {
+        await S.backend.mfaVerify(factorId, code);
+        if (msg) toast(msg);
+        await afterLogin();
+      };
+      if (st.verified.length) {
+        return showScreen('mfa', challengeScreen({ logo, onLogout: logout, verify: (code) => done(st.verified[0].id, code) }));
+      }
+      let factorId = null;
+      return showScreen('mfa', enrollScreen({
+        logo, onLogout: logout,
+        enroll: async () => { const f = await S.backend.mfaEnroll(S.session?.user?.id); factorId = f.factorId; return f; },
+        verify: (code) => done(factorId, code, 'Zwei-Faktor ist eingerichtet. 👍'),
+      }));
+    }
+    S.mfa = st.verified[0] || null;
+    try { S.maxMembers = await S.backend.maxMembers(); } catch { /* bleibt 3 */ }
+  }
+
   try {
     await reload({ silent: true });
   } catch (e) {
@@ -246,9 +272,9 @@ function showSetup() {
 }
 
 function showLogin(message, tab = 'login') {
-  const email = el('input', { type: 'email', autocomplete: 'email', autocapitalize: 'none', required: true, placeholder: 'name@beispiel.de' });
-  const pw = el('input', { type: 'password', autocomplete: tab === 'login' ? 'current-password' : 'new-password', required: true, minlength: 8 });
-  const pw2 = el('input', { type: 'password', autocomplete: 'new-password', minlength: 8 });
+  const email = el('input', { type: 'email', name: 'username', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', required: true, placeholder: 'name@beispiel.de' });
+  const pw = el('input', { type: 'password', name: 'password', autocomplete: tab === 'login' ? 'current-password' : 'new-password', required: true, minlength: 8, passwordrules: tab === 'signup' ? 'minlength: 8; required: lower; required: upper; required: digit;' : null });
+  const pw2 = el('input', { type: 'password', name: 'password2', autocomplete: 'new-password', minlength: 8 });
   const err = el('div', { class: 'error', hidden: !message || tab === 'sent', text: message || '' });
   const info = el('div', { class: 'info', hidden: true });
   const btn = el('button', { type: 'submit', class: 'btn primary block', text: tab === 'login' ? 'Einloggen' : 'Konto erstellen' });
@@ -308,7 +334,7 @@ function resetConnection() {
 function showSetupFromLogin() { showSetup(); }
 
 function showForgot(prefill) {
-  const email = el('input', { type: 'email', autocomplete: 'email', autocapitalize: 'none', value: prefill || '' });
+  const email = el('input', { type: 'email', name: 'username', autocomplete: 'username', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', value: prefill || '' });
   const msg = el('div', { class: 'info', hidden: true });
   const err = el('div', { class: 'error', hidden: true });
   showScreen('login', el('div', { class: 'auth' },
@@ -330,8 +356,9 @@ function showForgot(prefill) {
 }
 
 function showRecovery() {
-  const pw = el('input', { type: 'password', autocomplete: 'new-password', minlength: 8 });
-  const pw2 = el('input', { type: 'password', autocomplete: 'new-password', minlength: 8 });
+  const pw = el('input', { type: 'password', name: 'password', autocomplete: 'new-password', minlength: 8 });
+  const pw2 = el('input', { type: 'password', name: 'password2', autocomplete: 'new-password', minlength: 8 });
+  const user = el('input', { type: 'email', name: 'username', autocomplete: 'username', value: S.session?.user?.email || '', readonly: true, class: 'sr-only', tabindex: -1, 'aria-hidden': 'true' });
   const err = el('div', { class: 'error', hidden: true });
   showScreen('recovery', el('div', { class: 'auth' },
     logo('Neues Passwort festlegen'),
@@ -345,7 +372,7 @@ function showRecovery() {
         await afterLogin();
       } catch (ex) { err.textContent = friendlyError(ex).message; err.hidden = false; }
     } },
-    err,
+    err, user,
     el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Neues Passwort' }), pw),
     el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Nochmal' }), pw2),
     el('button', { type: 'submit', class: 'btn primary block', text: 'Speichern' }))));
@@ -363,6 +390,7 @@ function showNoAccess(text) {
 
 export async function logout() {
   clearSnapshot();
+  try { localStorage.removeItem('lager-mfa-pending'); } catch { /* */ }
   if (isDemo()) {
     try { localStorage.removeItem('lager-mode'); } catch { /* */ }
     location.hash = '';

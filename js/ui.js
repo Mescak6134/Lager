@@ -84,6 +84,7 @@ const ICONS = {
   swap: 'M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7',
   minus: 'M5 12h14',
   euro: 'M18 6a7 7 0 1 0 0 12M4 10h10M4 14h10',
+  hash: 'M4 9h16M4 15h16M10 3 8 21M16 3l-2 18',
 };
 
 export function icon(name, extraClass) {
@@ -130,6 +131,7 @@ export function parseNum(s) {
   if (!t) return null;
   let norm = t;
   if (t.includes(',')) norm = t.replace(/\./g, '').replace(',', '.');
+  else if (/^-?[1-9]\d{0,2}(\.\d{3})+$/.test(t)) norm = t.replace(/\./g, ''); // 1.500 = tausendfünfhundert
   if (!/^-?\d*\.?\d+$/.test(norm)) return NaN;
   return Number(norm);
 }
@@ -208,6 +210,7 @@ export function formDialog(title, fields, values = {}, { submit = 'Speichern', o
         input.value = v ?? '';
       } else if (f.type === 'checkbox') {
         input = el('input', { id, name: f.name, type: 'checkbox', checked: !!v, class: 'check' });
+        inputs[f.name] = input;
         return el('label', { class: 'field checkrow', for: id }, input, el('span', { text: f.label }));
       } else if (f.type === 'color') {
         input = el('input', { id, name: f.name, type: 'color', value: v || '#d97706', class: 'color' });
@@ -230,10 +233,11 @@ export function formDialog(title, fields, values = {}, { submit = 'Speichern', o
       } else {
         input = el('input', {
           id, name: f.name, type: f.type === 'number' ? 'text' : (f.type || 'text'),
-          inputmode: f.type === 'number' ? 'decimal' : (f.type === 'tel' ? 'tel' : null),
+          inputmode: f.type === 'number' ? 'decimal' : (f.type === 'tel' ? 'tel' : f.inputmode || null),
           value: v == null ? '' : (f.type === 'number' ? String(v).replace('.', ',') : v),
-          maxlength: f.max || 200, placeholder: f.placeholder, list: f.list ? id + '_l' : null,
-          autocomplete: f.autocomplete || 'off', autocapitalize: f.type === 'email' ? 'none' : null,
+          maxlength: f.max || 200, placeholder: f.placeholder, list: f.list ? id + '_l' : null, readonly: !!f.readonly,
+          autocomplete: f.autocomplete || 'off', autocapitalize: f.type === 'email' || f.type === 'url' ? 'none' : null,
+          autocorrect: f.type === 'email' || f.type === 'url' ? 'off' : null,
         });
       }
       if (f.required) input.required = true;

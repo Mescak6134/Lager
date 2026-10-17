@@ -460,3 +460,58 @@ input[type=color].color { width: 100%; height: 48px; padding: 4px; border-radius
 .plan-row:first-child { border-top: 0; }
 .plan-row .row { padding: 0 0 8px; }
 .plan-row .amt { font-size: 1.15rem; }
+
+/* =================== Zwei-Faktor =================== */
+.mfa h2 { font-size: 1.05rem; margin: 4px 0 8px; }
+.mfa h2.mt { margin-top: 20px; }
+.btn.big { min-height: 56px; font-size: 1.05rem; }
+input.otp {
+  font-size: 1.9rem; letter-spacing: .45em; text-align: center; font-variant-numeric: tabular-nums;
+  font-weight: 700; min-height: 60px; padding-left: calc(12px + .45em);
+}
+.qr { display: block; width: 200px; height: 200px; margin: 8px auto 12px; background: #fff; border-radius: 12px; padding: 8px; }
+.secret-row { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.secret { flex: 1; min-width: 0; font: 600 .95rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; letter-spacing: .04em; }
+.menu-ic.ok { background: var(--green-soft); color: var(--green); }
+.progress.cap { margin: 0 0 14px; }
+
+/* =================== iPhone / iOS Safari =================== */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body { overscroll-behavior-y: none; }            /* kein Gummiband / Pull-to-refresh */
+.chips, dialog { overscroll-behavior: contain; }
+/* Kein Zoom beim Antippen: Eingabefelder immer mindestens 16 px */
+input, select, textarea { font-size: max(16px, 1rem); }
+input.otp { font-size: 1.9rem; }
+/* Keine 300-ms-Verzögerung, kein Doppeltipp-Zoom */
+a, button, input, select, textarea, label, summary, .chip, [role=button] { touch-action: manipulation; }
+/* Seitenränder bei Notch (Querformat) */
+#app {
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.nav { padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.chips { margin-left: calc(-1 * max(16px, env(safe-area-inset-left, 0px))); margin-right: calc(-1 * max(16px, env(safe-area-inset-right, 0px)));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+/* Statusleiste (Uhr, Akku) bekommt einen eigenen Hintergrund, Inhalt scrollt darunter weg */
+body::before {
+  content: ''; position: fixed; left: 0; right: 0; top: 0; z-index: 45; pointer-events: none;
+  height: env(safe-area-inset-top, 0px); background: var(--bg);
+}
+/* Datumsfelder sehen in iOS Safari sonst zentriert/zu schmal aus */
+input[type=date] { min-width: 0; max-width: 100%; text-align: left; line-height: 26px; }
+input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; min-height: 1.45em; }
+input[type=date]::-webkit-calendar-picker-indicator { opacity: .6; }
+/* Dialoge auf kleinen Bildschirmen scrollbar, mit Abstand zur Home-Leiste */
+dialog { overflow-y: auto; -webkit-overflow-scrolling: touch; margin-bottom: max(12px, env(safe-area-inset-bottom, 0px)); }
+.sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+@media (display-mode: standalone) {
+  body { -webkit-user-select: none; user-select: none; }
+  input, textarea, .kv dd, .secret, .tbl td, .mv .title, .mv .meta { -webkit-user-select: text; user-select: text; }
+}
+
+.btn { text-align: center; }
+.secret-row .secret { flex: 1 1 100%; }
+.secret-row .btn { flex: 1 1 auto; }
+.user-actions { flex-wrap: wrap; }
+.user-actions .btn { flex: 1 1 auto; white-space: nowrap; }
+input.otp::placeholder { color: var(--muted); opacity: .5; }

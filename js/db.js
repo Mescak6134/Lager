@@ -22,6 +22,11 @@ export function friendlyError(e) {
   else if (has('Password should be') || has('weak_password') || has('Password is known')) out = 'Das Passwort ist zu kurz oder zu einfach. Bitte mindestens 8 Zeichen verwenden.';
   else if (has('rate limit') || has('too many') || code === 'over_email_send_rate_limit') out = 'Zu viele Versuche. Bitte ein paar Minuten warten.';
   else if (has('JWT expired') || has('invalid JWT') || code === 'PGRST301') out = 'Deine Anmeldung ist abgelaufen. Bitte neu einloggen.';
+  else if (code === 'mfa_verification_failed' || has('Invalid TOTP code')) out = 'Der Code stimmt nicht. Bitte den aktuellen 6-stelligen Code eingeben (er wechselt alle 30 Sekunden).';
+  else if (code === 'mfa_challenge_expired') out = 'Das hat zu lange gedauert. Bitte den Code nochmal eingeben.';
+  else if (code === 'mfa_totp_enroll_not_enabled' || code === 'mfa_totp_verify_not_enabled' || has('MFA enroll is disabled')) out = 'Zwei-Faktor ist in Supabase ausgeschaltet. Bitte unter Authentication → Multi-Factor „TOTP“ einschalten.';
+  else if (code === 'insufficient_aal' || has('AAL2 required')) out = 'Bitte zuerst den Zwei-Faktor-Code eingeben.';
+  else if (code === 'too_many_enrolled_mfa_factors') out = 'Zu viele Zwei-Faktor-Einträge. Bitte einen Admin bitten, deine Zwei-Faktor-Anmeldung zurückzusetzen.';
   else if (code === '23505') out = 'Diesen Namen bzw. diese E-Mail gibt es schon.';
   else if (code === '23503') out = 'Das wird noch verwendet (z. B. in Buchungen) und kann nicht gelöscht werden. Du kannst es stattdessen deaktivieren bzw. archivieren.';
   else if (code === '23514') out = 'Eine Eingabe ist ungültig (z. B. zu lang oder kleiner als 0).';
@@ -83,6 +88,46 @@ export async function createSupabaseBackend(url, key) {
     async updatePassword(password) { ok(await sb.auth.updateUser({ password })); },
     async claimMembership() { return ok(await sb.rpc('claim_membership')); },
 
+    // ---------- Zwei-Faktor (TOTP) ----------
+    async mfaState() {
+      const lvl = ok(await sb.auth.mfa.getAuthenticatorAssuranceLevel());
+      const f = ok(await sb.auth.mfa.listFactors());
+      return {
+        level: lvl.currentLevel,
+        verified: (f.totp || []).filter((x) => x.status === 'verified'),
+        unverified: (f.all || []).filter((x) => x.status !== 'verified'),
+      };
+    },
+    // Neue Einrichtung starten. Eine begonnene (z. B. weil Safari die Seite neu geladen hat)
+    // wird weiterverwendet, damit der schon gespeicherte Code passt. Reste werden gelöscht.
+    async mfaEnroll(userId) {
+      const st = await this.mfaState();
+      let pending = null;
+      try { pending = JSON.parse(localStorage.getItem(PENDING_KEY)); } catch { /* */ }
+      if (pending && pending.uid === userId && st.unverified.some((x) => x.id === pending.factorId)) {
+        for (const x of st.unverified) if (x.id !== pending.factorId) await sb.auth.mfa.unenroll({ factorId: x.id });
+        return pending;
+      }
+      for (const x of st.unverified) ok(await sb.auth.mfa.unenroll({ factorId: x.id }));
+      let res = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Lager', issuer: 'Lager' });
+      if (res.error && (res.error.code === 'mfa_factor_name_conflict' || /friendly name/i.test(res.error.message))) {
+        res = await sb.auth.mfa.enroll({ factorType: 'totp', friendlyName: 'Lager ' + Date.now().toString(36), issuer: 'Lager' });
+      }
+      const data = ok(res);
+      const out = { uid: userId, factorId: data.id, uri: data.totp.uri, secret: data.totp.secret, qr: data.totp.qr_code };
+      try { localStorage.setItem(PENDING_KEY, JSON.stringify(out)); } catch { /* */ }
+      return out;
+    },
+    async mfaVerify(factorId, code) {
+      ok(await sb.auth.mfa.challengeAndVerify({ factorId, code }));
+      try { localStorage.removeItem(PENDING_KEY); } catch { /* */ }
+    },
+    async maxMembers() {
+      const { data, error } = await sb.rpc('max_members');
+      return error || !(data > 0) ? 3 : data;
+    },
+    async reset2fa(memberId) { return ok(await sb.rpc('reset_2fa', { p_member: memberId })); },
+
     async loadAll() {
       const [members, categories, manufacturers, suppliers, locations, items, movements, settlements] = await Promise.all([
         fetchAll('members', [['name', true]]),
@@ -138,11 +183,13 @@ export async function createSupabaseBackend(url, key) {
 }
 
 export const baseUrl = () => location.origin + location.pathname;
+const PENDING_KEY = 'lager-mfa-pending';
 
 // =====================================================================
 //  Demo (alles nur lokal im Browser gespeichert)
 // =====================================================================
 const DEMO_KEY = 'lager-demo-v2';
+const DEMO_MAX = 3; // wie public.max_members() in der Datenbank
 const DEMO_UID = 'demo-user-a';
 const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Math.random().toString(36).slice(2) + Date.now().toString(36));
 
@@ -158,6 +205,9 @@ export function createDemoBackend() {
   function log(table, action, oldRow, newRow) {
     db.log.unshift({ id: (db.log[0]?.id || 0) + 1, at: now(), user_id: DEMO_UID, user_name: me()?.name || 'Demo', table_name: table, action, row_id: (newRow || oldRow)?.id, old_data: oldRow || null, new_data: newRow || null });
     if (db.log.length > 1000) db.log.length = 1000;
+  }
+  function checkCap(id) {
+    if (db.members.filter((m) => m.active && m.id !== id).length >= DEMO_MAX) fail(`Maximal ${DEMO_MAX} Benutzer möglich. Bitte zuerst jemanden deaktivieren.`);
   }
   function checkUnique(table, row, field = 'name') {
     const v = String(row[field] || '').trim().toLowerCase();
@@ -203,6 +253,16 @@ export function createDemoBackend() {
     async signIn() {}, async signUp() { return { needsConfirm: false }; }, async signOut() {},
     async resetPassword() {}, async updatePassword() {},
     async claimMembership() { return structuredClone(me()); },
+    async maxMembers() { return DEMO_MAX; },
+    async reset2fa(memberId) {
+      if (!isAdmin()) fail('Nur Admins dürfen die Zwei-Faktor-Anmeldung zurücksetzen.');
+      const m = db.members.find((x) => x.id === memberId);
+      if (!m) fail('Diese Person gibt es nicht.');
+      if (m.user_id === DEMO_UID) fail('Du kannst deine eigene Zwei-Faktor-Anmeldung nicht zurücksetzen. Bitte einen anderen Admin fragen.');
+      db.log.unshift({ id: (db.log[0]?.id || 0) + 1, at: now(), user_id: DEMO_UID, user_name: me()?.name, table_name: 'members', action: 'reset_2fa', row_id: m.id, old_data: { name: m.name, email: m.email, factors: m.user_id ? 1 : 0 }, new_data: null });
+      saveDemo();
+      return m.user_id ? 1 : 0;
+    },
     async loadAll() {
       const out = {};
       for (const t of TABLES) out[t] = structuredClone(db[t]);
@@ -214,6 +274,7 @@ export function createDemoBackend() {
       if (table === 'members') {
         if (!isAdmin()) fail('Nur Admins dürfen Personen einladen.');
         checkUnique('members', row, 'email');
+        checkCap(null);
       } else if (table !== 'settlements') checkUnique(table, row);
       if (table === 'settlements' && row.from_member === row.to_member) fail('Bitte zwei verschiedene Personen wählen.');
       const r = { id: uuid(), ...row, created_at: now() };
@@ -235,6 +296,7 @@ export function createDemoBackend() {
         if (!isAdmin() && (!own || Object.keys(patch).some((k) => k !== 'name'))) fail('Nur Admins dürfen das ändern.');
         if (patch.email && patch.email !== old.email && old.user_id) fail('Die E-Mail kann nach der Registrierung nicht mehr geändert werden.');
         checkUnique('members', next, 'email');
+        if (next.active && !old.active) checkCap(id);
         const others = db.members.filter((m) => m.id !== id && m.role === 'admin' && m.active);
         if (!others.length && (next.role !== 'admin' || !next.active)) fail('Es muss mindestens einen aktiven Admin geben.');
       } else if (patch.name != null) checkUnique(table, next);

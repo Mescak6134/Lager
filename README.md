@@ -8,7 +8,21 @@ Eine App für Handy und PC, mit der mehrere Leute gemeinsam festhalten:
 - **wer wem noch Geld schuldet** – und wie man das mit möglichst wenigen Zahlungen ausgleicht.
 
 Die App läuft kostenlos auf **GitHub Pages**, die Daten liegen geschützt in einer kostenlosen **Supabase**-Datenbank.
-Der Code ist öffentlich, **eure Daten nicht** – die sieht nur, wer eingeladen ist und sich einloggt.
+Der Code ist öffentlich, **eure Daten nicht** – die sieht nur, wer eingeladen ist und sich mit Passwort
+**und** 6-stelligem Code (Zwei-Faktor) anmeldet. Es gibt höchstens **3 Benutzer**.
+
+---
+
+## ⚠️ Datenbank schon eingerichtet? Update vom 17.10.2026 ausführen
+
+Wer `supabase-setup.sql` **vor dem 17.10.2026** ausgeführt hat, muss **einmal** das Update einspielen:
+
+1. In Supabase links **„SQL Editor“** → **„New query“**.
+2. Die Datei **`updates/2026-10-17-2fa.sql`** öffnen, **komplett** kopieren, einfügen, **„Run“**. Es muss „Success“ erscheinen.
+   Nichts anpassen – eure Daten bleiben, wie sie sind.
+
+Danach fragt die App jeden beim nächsten Öffnen (auch wer schon angemeldet ist) einmal nach der Einrichtung der Zwei-Faktor-Anmeldung
+(siehe [Schritt 6](#schritt-6--als-admin-registrieren)). Bis dahin zeigt die Datenbank niemandem etwas an.
 
 ---
 
@@ -48,7 +62,9 @@ In Supabase links **„Authentication“**:
      die vorher in der App eingeladen wurden – das prüft die Datenbank selbst.
    - **„Confirm email“: Empfehlung AUS** (einfacher, man kann sofort loslegen).
      Wenn du es AN lässt, bekommt jeder nach dem Registrieren eine E-Mail mit Bestätigungs-Link – auch ok.
-2. **URL Configuration**
+2. **Multi-Factor** (bzw. **Sign In / Providers → Multi-Factor Authentication**)
+   - **TOTP (App Authenticator)** muss **eingeschaltet** sein. Das ist bei Supabase normalerweise schon so.
+3. **URL Configuration**
    - **Site URL:** die Adresse deiner App, z. B. `https://pyrolagern.de/`
    - **Redirect URLs:** dieselbe Adresse nochmal hinzufügen.
    - (Wird für „Passwort vergessen“ und Bestätigungs-Links gebraucht.)
@@ -79,13 +95,33 @@ In Supabase links **„Authentication“**:
 
 ### Schritt 6 · Als Admin registrieren
 
-App öffnen → **„Konto erstellen“** → genau die E-Mail aus Schritt 2 → Passwort (mind. 8 Zeichen) → fertig.
+App öffnen → **„Konto erstellen“** → genau die E-Mail aus Schritt 2 → Passwort (mind. 8 Zeichen).
+
+Danach kommt **einmalig „Zwei-Faktor einrichten“** (Pflicht für alle):
+
+1. Auf dem iPhone auf **„Zur iPhone-Passwörter-App hinzufügen“** tippen.
+2. Die Passwörter-App fragt, wo der Code gespeichert werden soll → den Eintrag für **pyrolagern.de** wählen
+   (oder neu anlegen).
+3. Zurück zur App und den **6-stelligen Code** eintippen, den die Passwörter-App anzeigt.
+
+Ab dann schlägt das iPhone den Code bei jeder Anmeldung **über der Tastatur** vor – antippen, Face ID, fertig.
+(Ohne iPhone: QR-Code mit einer Authenticator-App scannen, z. B. Google Authenticator.)
 
 ### Schritt 7 · Freunde einladen
 
 In der App: **Mehr → Benutzer verwalten → Person einladen** → Name und E-Mail eintragen.
 Danach **„Einladung teilen“** antippen und z. B. per WhatsApp schicken.
-Die Person öffnet die App, tippt auf **„Konto erstellen“** und registriert sich mit genau dieser E-Mail.
+Die Person öffnet die App, tippt auf **„Konto erstellen“**, registriert sich mit genau dieser E-Mail
+und richtet die Zwei-Faktor-Anmeldung ein (wie in Schritt 6).
+
+Es gibt **höchstens 3 aktive Benutzer** (Anzeige „x von 3 Benutzern“). Für jemand Neuen muss vorher
+eine Person deaktiviert werden.
+
+### Schritt 7b · Wenn alle registriert sind: Registrierung abschalten
+
+Sobald **alle 3** ihr Konto erstellt haben, in Supabase **Authentication → Sign In / Providers → Email**
+die Option **„Allow new users to sign up“ AUSschalten**. Dann kann sich gar niemand mehr neu registrieren –
+auch nicht mit einer Einladung. (Für eine neue Person später kurz wieder einschalten.)
 
 ### Schritt 8 · Auf dem Handy installieren
 
@@ -110,7 +146,8 @@ Danach startet die App wie eine normale App vom Startbildschirm.
 | **Stammdaten** | Artikel, Hersteller, Händler, Lagerorte, Kategorien – anlegen, bearbeiten, archivieren |
 | **Suche** | Über Artikel, Hersteller, Händler, Lagerorte, Chargen und Rechnungsnummern |
 | **Berichte** | Bestandsliste, Verlauf, Abrechnung zum **Drucken / als PDF**, CSV für Excel, komplette **Datensicherung** (JSON) |
-| **Benutzer** | Admin lädt ein, vergibt Rollen (Admin / Mitglied), kann Zugang deaktivieren |
+| **Benutzer** | Höchstens 3. Admin lädt ein, vergibt Rollen (Admin / Mitglied), kann Zugang deaktivieren und die Zwei-Faktor-Anmeldung zurücksetzen |
+| **Zwei-Faktor** | Pflicht für alle: Passwort + 6-stelliger Code (auf dem iPhone per Face ID automatisch ausgefüllt) |
 | **Protokoll** | Jede Änderung wird automatisch festgehalten: wer, wann, was – kann niemand bearbeiten oder löschen |
 | **Offline** | Ohne Internet siehst du den zuletzt geladenen Stand (nur ansehen) |
 
@@ -122,6 +159,9 @@ Auf dem iPhone wird der Knopf einfach ausgeblendet – Artikel findet man dort �
 ## Sicherheit – kurz erklärt
 
 - **Nur Eingeladene** können sich registrieren. Wer nicht in der Liste steht, bekommt „nicht eingeladen“.
+- **Zwei-Faktor ist Pflicht** und wird von der **Datenbank** geprüft, nicht nur von der App: Wer nur das Passwort hat,
+  bekommt keine einzige Zeile zu sehen – auch keine Fotos.
+- Höchstens **3 aktive Benutzer** – auch das prüft die Datenbank.
 - Jede Tabelle ist mit **Row Level Security** geschützt: Ohne gültigen Login eines aktiven Mitglieds liefert die Datenbank **nichts**.
 - **Bestand kann nicht unter 0** fallen – das prüft die Datenbank bei jeder Buchung (je Person, Lagerort und Charge).
 - Buchungen kann man nicht nachträglich verändern, nur löschen – und auch das steht im Protokoll.
@@ -130,7 +170,36 @@ Auf dem iPhone wird der Knopf einfach ausgeblendet – Artikel findet man dort �
 
 ---
 
+## Handy verloren?
+
+**Ein Freund hat sein Handy verloren:**
+Ein Admin öffnet **Mehr → Benutzer verwalten** und tippt bei der Person auf **„2FA zurücksetzen“**.
+Damit wird der alte Code gelöscht und die Person wird auf allen Geräten abgemeldet (das verlorene Handy fliegt raus).
+Danach meldet sie sich mit ihrem Passwort an und richtet den Code auf dem neuen Handy neu ein.
+Wenn das Passwort auch im verlorenen Handy gespeichert war: danach gleich unter *Mehr → Mein Konto* ein neues Passwort setzen.
+
+**Der Admin selbst hat sein Handy verloren:**
+- Gibt es einen zweiten Admin, kann der das wie oben zurücksetzen.
+- Sonst: In Supabase links **„SQL Editor“** → **„New query“**, diese Zeile einfügen, die E-Mail ersetzen, **„Run“**:
+
+  ```sql
+  delete from auth.mfa_factors where user_id = (select user_id from public.members where email = 'DEINE-EMAIL@BEISPIEL.DE');
+  ```
+
+  Danach in der App mit dem Passwort anmelden und die Zwei-Faktor-Anmeldung neu einrichten.
+
+> Tipp: Mindestens **zwei Admins** machen das Leben leichter (*Benutzer verwalten → Bearbeiten → Rolle*).
+
+---
+
 ## Häufige Fragen
+
+**„Der Code stimmt nicht“**
+→ Den **aktuellen** Code nehmen (er wechselt alle 30 Sekunden). Stimmt er immer wieder nicht, ist die Uhrzeit
+am Handy falsch – in den Einstellungen „Automatisch einstellen“ einschalten.
+
+**„Maximal 3 Benutzer möglich“**
+→ Es sind schon 3 Personen aktiv. Zuerst jemanden unter *Benutzer verwalten → Bearbeiten* deaktivieren.
 
 **„Diese E-Mail-Adresse ist nicht eingeladen“**
 → Ein Admin muss die Person zuerst unter *Mehr → Benutzer verwalten* mit **genau dieser** E-Mail einladen.
@@ -157,6 +226,9 @@ Auf dem iPhone wird der Knopf einfach ausgeblendet – Artikel findet man dort �
 - Reines HTML/CSS/JavaScript, kein Build-Schritt. Läuft direkt auf GitHub Pages.
 - `index.html`, `style.css` – Oberfläche · `js/` – App-Logik · `js/views/` – die einzelnen Seiten
 - `js/db.js` – Datenzugriff (Supabase oder lokale Demo) · `js/calc.js` – Bestand, Werte, Schulden, Ausgleich
-- `supabase-setup.sql` – komplette Datenbank: Tabellen, Regeln (RLS), Prüfungen, Protokoll, Foto-Speicher
+- `supabase-setup.sql` – komplette Datenbank: Tabellen, Regeln (RLS), Zwei-Faktor-Pflicht, Prüfungen, Protokoll, Foto-Speicher
+- `updates/` – Updates für schon eingerichtete Datenbanken (jeweils einmal im SQL Editor ausführen)
+- `js/mfa.js` – Zwei-Faktor einrichten und abfragen (Supabase MFA, TOTP)
+- Die Grenze von 3 Benutzern steht in der Datenbank-Funktion `public.max_members()`.
 - `sw.js` + `manifest.webmanifest` – damit es eine installierbare App (PWA) ist und offline startet
 - `vendor/supabase-2.117.3.js` – die offizielle Supabase-Bibliothek (MIT-Lizenz), fest eingebunden

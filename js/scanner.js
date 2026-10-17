@@ -1,7 +1,20 @@
 // Barcode-Scanner über die Kamera (nur wenn der Browser das kann, z. B. Chrome auf Android).
-import { el, icon } from './ui.js';
+import { el, icon, formDialog } from './ui.js';
 
 export const canScan = () => 'BarcodeDetector' in window && !!navigator.mediaDevices?.getUserMedia;
+
+// iPhone (Safari) kann keine Barcodes erkennen → dort die Nummer eintippen lassen
+export const barcodeLabel = () => (canScan() ? 'Barcode scannen' : 'EAN eintippen');
+export const barcodeIcon = () => (canScan() ? 'scan' : 'hash');
+export function getBarcode() { return canScan() ? scanBarcode() : typeBarcode(); }
+
+async function typeBarcode() {
+  const res = await formDialog('EAN eintippen', [
+    { name: 'ean', label: 'EAN / Barcode-Nummer', required: true, inputmode: 'numeric', max: 32, placeholder: 'z. B. 4006381000017', hint: 'Die Zahl unter dem Strichcode auf der Packung.' },
+  ], {}, { submit: 'Suchen' });
+  const code = res?.ean ? String(res.ean).replace(/\s/g, '') : '';
+  return code || null;
+}
 
 export async function scanBarcode() {
   if (!canScan()) return null;

@@ -14,6 +14,8 @@ export const S = {
   photos: new Map(),  // photo_path → anzeigbare URL
   ui: {},             // Filter, Eingaben usw. pro Ansicht
   installPrompt: null,
+  mfa: null,          // eingerichteter Zwei-Faktor (nur Supabase)
+  maxMembers: 3,      // wird aus der Datenbank (public.max_members) geladen
 };
 export const hooks = { render: () => {}, logout: () => {} };
 

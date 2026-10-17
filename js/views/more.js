@@ -22,6 +22,7 @@ export function more() {
       item('#stammdaten', 'database', 'Stammdaten', 'Artikel, Hersteller, Händler, Lagerorte, Kategorien'),
       item('#benutzer', 'users', isAdmin() ? 'Benutzer verwalten' : 'Benutzer', isAdmin() ? 'Einladen, Rollen, Zugang' : `${S.data.members.filter((m) => m.active).length} Personen`),
       item('#protokoll', 'history', 'Änderungsprotokoll', 'Wer hat wann was gemacht')),
+    mfaCard(),
     el('ul', { class: 'card list menu' },
       item('#konto', 'user', 'Mein Konto', 'Name, Passwort'),
       item(null, 'phone', 'App auf dem Handy installieren', 'Wie eine normale App nutzen', installHelp),
@@ -33,7 +34,20 @@ export function more() {
         : item(null, 'logout', 'Abmelden', S.session?.user?.email, async () => {
           if (await confirmBox('Wirklich abmelden?', { ok: 'Abmelden', title: 'Abmelden' })) hooks.logout();
         })),
-    el('p', { class: 'sub center', text: 'Lager-App · Version 1.0' }));
+    el('p', { class: 'sub center', text: 'Lager-App · Version 1.1' }));
+}
+
+function mfaCard() {
+  let status, text;
+  if (isDemo()) { status = 'In der Demo aus'; text = 'Mit eurer echten Datenbank ist der 6-stellige Code bei jeder Anmeldung Pflicht.'; }
+  else if (S.mfa) { status = 'Aktiv'; text = `Eingerichtet am ${fmtDateTime(S.mfa.created_at).slice(0, 10)}. Bei jeder Anmeldung wird der 6-stellige Code abgefragt – auf dem iPhone füllt Face ID ihn aus.`; }
+  else { status = 'Aktiv'; text = 'Bei jeder Anmeldung wird der 6-stellige Code abgefragt.'; }
+  return el('section', { class: 'card mfa-card' },
+    el('div', { class: 'row no-border' },
+      el('span', { class: 'menu-ic ok' }, icon('key')),
+      el('span', { class: 'grow' }, el('strong', { class: 'block', text: 'Zwei-Faktor-Anmeldung' }), el('span', { class: 'sub', text: text })),
+      el('span', { class: 'badge ' + (isDemo() ? '' : 'in'), text: status })),
+    isDemo() ? null : el('p', { class: 'sub mt-s', text: 'Handy verloren? Ein Admin kann sie unter „Benutzer verwalten“ zurücksetzen. Abschalten geht nicht – sie ist für alle Pflicht.' }));
 }
 
 async function installHelp() {
@@ -74,9 +88,10 @@ export function account() {
 
 async function changePassword() {
   await formDialog('Passwort ändern', [
+    { name: 'username', label: 'E-Mail', type: 'email', autocomplete: 'username', readonly: true, hint: 'Nur zur Info – damit dein iPhone das neue Passwort richtig speichert.' },
     { name: 'pw', label: 'Neues Passwort', type: 'password', required: true, autocomplete: 'new-password', hint: 'Mindestens 8 Zeichen.' },
     { name: 'pw2', label: 'Nochmal', type: 'password', required: true, autocomplete: 'new-password' },
-  ], {}, {
+  ], { username: S.me.email }, {
     onSave: async (v) => {
       if (v.pw.length < 8) throw new Error('Mindestens 8 Zeichen.');
       if (v.pw !== v.pw2) throw new Error('Die beiden Passwörter sind nicht gleich.');
@@ -90,10 +105,14 @@ async function changePassword() {
 export function users() {
   const admin = isAdmin() && !S.readonly;
   const list = [...S.data.members].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name, 'de'));
+  const activeN = list.filter((m) => m.active).length;
+  const full = activeN >= S.maxMembers;
   return el('div', null,
-    topbar(admin ? 'Benutzer verwalten' : 'Benutzer', { back: '#mehr', sub: `${list.filter((m) => m.active).length} aktiv` }),
-    admin ? el('button', { class: 'btn primary block', onclick: invite }, icon('plus'), 'Person einladen') : null,
-    admin ? el('p', { class: 'sub mt', text: 'Eingeladene Personen öffnen die App, tippen auf „Konto erstellen“ und registrieren sich mit genau dieser E-Mail.' }) : null,
+    topbar(admin ? 'Benutzer verwalten' : 'Benutzer', { back: '#mehr', sub: `${activeN} von ${S.maxMembers} Benutzern` }),
+    el('div', { class: 'progress cap', role: 'img', 'aria-label': `${activeN} von ${S.maxMembers} Plätzen belegt` }, el('span', { style: { width: Math.min(100, (activeN / S.maxMembers) * 100) + '%' } })),
+    admin ? el('button', { class: 'btn primary block', disabled: full, onclick: invite }, icon('plus'), 'Person einladen') : null,
+    admin && full ? el('p', { class: 'sub mt', text: `Alle ${S.maxMembers} Plätze sind belegt. Um jemand Neuen einzuladen, zuerst eine Person deaktivieren.` }) : null,
+    admin && !full ? el('p', { class: 'sub mt', text: 'Eingeladene Personen öffnen die App, tippen auf „Konto erstellen“ und registrieren sich mit genau dieser E-Mail.' }) : null,
     el('ul', { class: 'list mt' }, list.map((m) => el('li', { class: 'card' },
       el('div', { class: 'row no-border' },
         el('span', { class: 'avatar', text: m.name.slice(0, 1).toUpperCase() }),
@@ -103,9 +122,17 @@ export function users() {
           el('span', null,
             el('span', { class: 'badge ' + (m.role === 'admin' ? 'arch' : ''), text: m.role === 'admin' ? 'Admin' : 'Mitglied' }), ' ',
             !m.active ? el('span', { class: 'badge warn', text: 'deaktiviert' }) : m.user_id ? el('span', { class: 'badge in', text: 'registriert' }) : el('span', { class: 'badge move', text: 'eingeladen' })))),
-      admin ? el('div', { class: 'actions mt-s' },
+      admin ? el('div', { class: 'actions mt-s user-actions' },
         el('button', { class: 'btn small', onclick: () => editMember(m) }, icon('edit'), 'Bearbeiten'),
-        !m.user_id && m.active ? el('button', { class: 'btn small', onclick: () => shareInvite(m) }, icon('upload'), 'Einladung teilen') : null) : null))));
+        !m.user_id && m.active ? el('button', { class: 'btn small', onclick: () => shareInvite(m) }, icon('upload'), 'Einladung teilen') : null,
+        m.user_id && m.id !== S.me.id ? el('button', { class: 'btn small', onclick: () => reset2fa(m) }, icon('key'), '2FA zurücksetzen') : null) : null))));
+}
+
+async function reset2fa(m) {
+  if (!await confirmBox(`Die Zwei-Faktor-Anmeldung von ${m.name} wird gelöscht und ${m.name} wird auf allen Geräten abgemeldet. Beim nächsten Login (mit Passwort) richtet ${m.name} den Code neu ein – z. B. auf dem neuen Handy.`, { ok: 'Zurücksetzen', danger: true, title: 'Zwei-Faktor zurücksetzen?' })) return;
+  const n = await run(() => S.backend.reset2fa(m.id));
+  if (n === false) return;
+  toast(n > 0 ? `Zwei-Faktor von ${m.name} zurückgesetzt.` : `${m.name} hatte noch keine Zwei-Faktor-Anmeldung.`);
 }
 
 async function invite() {
@@ -168,6 +195,7 @@ function describe(l) {
     }
     case 'settlements': return `Ausgleich ${ACTION_DE[l.action]}: ${memberName(d.from_member)} → ${memberName(d.to_member)} ${fmtMoney(d.amount)}`;
     case 'members': {
+      if (l.action === 'reset_2fa') return `Zwei-Faktor zurückgesetzt: ${d.name}`;
       if (l.action === 'update' && l.old_data && l.new_data) {
         const ch = [];
         if (l.old_data.name !== l.new_data.name) ch.push(`Name „${l.old_data.name}“ → „${l.new_data.name}“`);
@@ -195,7 +223,7 @@ export async function logView() {
   return el('div', null,
     topbar('Änderungsprotokoll', { back: '#mehr', sub: 'Die letzten 300 Änderungen – kann niemand bearbeiten' }),
     rows.length ? el('ul', { class: 'list' }, rows.map((l) => el('li', { class: 'card log-row' },
-      el('span', { class: 'sign ' + (l.action === 'delete' ? 'out' : l.action === 'insert' ? 'in' : 'move'), text: l.action === 'delete' ? '×' : l.action === 'insert' ? '+' : '✎' }),
+      el('span', { class: 'sign ' + (l.action === 'delete' ? 'out' : l.action === 'insert' ? 'in' : 'move'), text: l.action === 'delete' ? '×' : l.action === 'insert' ? '+' : l.action === 'reset_2fa' ? '⟲' : '✎' }),
       el('span', { class: 'body' },
         el('span', { class: 'title', text: describe(l) }),
         el('span', { class: 'meta', text: `${l.user_name || 'Unbekannt'} · ${fmtDateTime(l.at)}` })))))

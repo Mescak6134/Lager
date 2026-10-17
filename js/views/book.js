@@ -2,7 +2,7 @@
 import { S, run, go, memberName, qtyText, unitOf, activeMembers, activeOf, optionsOf, lotLabel, itemOf } from '../store.js';
 import { el, icon, topbar, fmtMoney, fmtQty, parseNum, today, round3, selectEl, field, toast, confirmBox } from '../ui.js';
 import { splitPrice, lotKey, EPS } from '../calc.js';
-import { canScan, scanBarcode } from '../scanner.js';
+import { getBarcode, barcodeLabel, barcodeIcon } from '../scanner.js';
 import { editItem, editRecord } from './masterdata.js';
 
 const TABS = [['einkauf', 'Einkauf'], ['abgang', 'Abgang'], ['uebertrag', 'Übertragen']];
@@ -52,9 +52,9 @@ function itemPicker(st, onChange, { withStock } = {}) {
   return el('label', { class: 'field' },
     el('span', { class: 'lbl', text: 'Artikel *' }),
     el('div', { class: 'with-btn' }, sel,
-      canScan() ? el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Barcode scannen', onclick: async (e) => {
+      el('button', { type: 'button', class: 'icon-btn', 'aria-label': barcodeLabel(), title: barcodeLabel(), onclick: async (e) => {
         e.preventDefault();
-        const code = await scanBarcode();
+        const code = await getBarcode();
         if (!code) return;
         const hit = S.data.items.find((i) => i.ean === code && !i.archived);
         if (hit) { st.item_id = hit.id; sel.value = hit.id; onChange && onChange(); toast(`Gefunden: ${hit.name}`); return; }
@@ -62,7 +62,7 @@ function itemPicker(st, onChange, { withStock } = {}) {
           const saved = await editItem(null, { ean: code });
           if (saved) { st.item_id = saved.id; go(location.hash); }
         }
-      } }, icon('scan')) : null,
+      } }, icon(barcodeIcon())),
       el('button', { type: 'button', class: 'icon-btn', 'aria-label': 'Neuer Artikel', title: 'Neuer Artikel', onclick: async (e) => {
         e.preventDefault();
         const saved = await editItem(null);

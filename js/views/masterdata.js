@@ -91,7 +91,7 @@ export async function editItem(row, preset = {}) {
     { name: 'min_qty', label: 'Mindestbestand (gesamt)', type: 'number', hint: 'Bei weniger gibt es eine Warnung. Leer lassen = keine Warnung.' },
     { name: 'default_location_id', label: 'Standard-Lagerort', type: 'select', options: optionsOf('locations', '— keiner —') },
     { name: 'sku', label: 'Artikelnummer', max: 60 },
-    { name: 'ean', label: 'EAN / Barcode', max: 32, scan: canScan() ? scanBarcode : null, autocomplete: 'off' },
+    { name: 'ean', label: 'EAN / Barcode', max: 32, scan: canScan() ? scanBarcode : null, autocomplete: 'off', inputmode: 'numeric', hint: canScan() ? null : 'Die Zahl unter dem Strichcode eintippen.' },
     { name: 'notes', label: 'Notizen', type: 'textarea' },
     { name: 'photo', label: 'Foto', type: 'photo', current: photoUrl },
   ];

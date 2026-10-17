@@ -1,7 +1,7 @@
 // Berichte (drucken / PDF), Exporte, Datensicherung und globale Suche
 import { S, reload, go, isDemo, memberName, itemName, qtyText, locName, supName, catOf } from '../store.js';
 import { el, icon, topbar, fmtMoney, fmtDate, today, toast, empty, confirmBox } from '../ui.js';
-import { canScan, scanBarcode } from '../scanner.js';
+import { getBarcode, barcodeLabel, barcodeIcon } from '../scanner.js';
 import { exportStockCSV, exportMovementsCSV, exportSettleCSV, exportMasterCSV, backupJSON } from '../exports.js';
 import { TYPES, thumb } from './masterdata.js';
 import { entrySummary } from './history.js';
@@ -168,6 +168,6 @@ export function search() {
     topbar('Suche', { back: '#mehr' }),
     el('div', { class: 'with-btn' },
       el('div', { class: 'search grow' }, icon('search'), input),
-      canScan() ? el('button', { class: 'icon-btn', 'aria-label': 'Barcode scannen', onclick: async () => { const c = await scanBarcode(); if (c) { input.value = c; draw(); } } }, icon('scan')) : null),
+      el('button', { class: 'icon-btn', 'aria-label': barcodeLabel(), title: barcodeLabel(), onclick: async () => { const c = await getBarcode(); if (c) { input.value = c; draw(); } } }, icon(barcodeIcon()))),
     out);
 }
