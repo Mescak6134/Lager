@@ -1,7 +1,7 @@
 {
-  "name": "Lager – Bestand & Einkäufe",
+  "name": "Lager",
   "short_name": "Lager",
-  "description": "Was gehört wem – Menge, Einzelwert und Gesamtwert für die Inventur.",
+  "description": "Private App.",
   "lang": "de",
   "id": "./",
   "start_url": "./",

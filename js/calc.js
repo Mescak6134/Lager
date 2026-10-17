@@ -5,6 +5,7 @@ export const lotKey = (item, owner, loc, batch) => `${item}|${owner}|${loc || ''
 
 export const REASONS = {
   zugang: 'Zugang', verbrauch: 'Verbrauch', uebertrag: 'Übertrag', korrektur: 'Korrektur', sonstiges: 'Sonstiges',
+  verkauf: 'Abgang', kauf: 'Zugang', // alte Gründe aus früheren Versionen neutral anzeigen
 };
 
 export function derive(d) {

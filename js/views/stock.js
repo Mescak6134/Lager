@@ -5,7 +5,7 @@ import { getBarcode, barcodeLabel, barcodeIcon } from '../scanner.js';
 import { editItem, toggleArchive, kpi } from './masterdata.js';
 import { entryList } from './history.js';
 import { burst } from '../fireworks.js';
-import { silvesterText, saleText } from '../silvester.js';
+import { silvesterText, shoppingText } from '../silvester.js';
 
 export function stock() {
   const f = (S.ui.stock ||= { text: '', person: '', cat: '', sort: 'name' });
@@ -70,12 +70,12 @@ export function stock() {
     body);
 }
 
-// Zwei kleine Countdowns: Silvester und erster Verkaufstag
+// Zwei kleine Countdowns: Silvester und erster Einkaufstag
 function countdowns() {
-  const sale = saleText();
+  const shop = shoppingText();
   return el('div', { class: 'countdowns', role: 'group', 'aria-label': 'Countdown' },
     el('span', { class: 'cd cd-nye' }, el('span', { class: 'cd-dot', 'aria-hidden': 'true' }), silvesterText()),
-    sale ? el('span', { class: 'cd cd-sale' }, el('span', { class: 'cd-dot', 'aria-hidden': 'true' }), sale) : null);
+    shop ? el('span', { class: 'cd cd-shop' }, el('span', { class: 'cd-dot', 'aria-hidden': 'true' }), shop) : null);
 }
 
 // Tabelle auf breiten Bildschirmen, Karten auf dem Handy – gleiche Zeilen, CSS entscheidet

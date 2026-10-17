@@ -8,34 +8,53 @@ import { backupJSON, exportInventoryCSV } from '../exports.js';
 
 const APP_URL = () => location.origin + location.pathname.replace(/index\.html$/, '');
 
+export const APP_VERSION = '2.2';
+
 export function more() {
-  const item = (href, ic, title, sub, onclick) => el('li', null,
-    el(href ? 'a' : 'button', { class: 'row link', href, type: href ? null : 'button', onclick },
-      el('span', { class: 'menu-ic' }, icon(ic)),
-      el('span', { class: 'grow' }, el('strong', { class: 'block', text: title }), sub ? el('span', { class: 'sub', text: sub }) : null),
-      icon('right')));
-  return el('div', null,
-    topbar('Mehr', { sub: `${S.me.name} · ${S.me.role === 'admin' ? 'Admin' : 'Mitglied'}${isDemo() ? ' · Demo' : ''}` }),
-    el('ul', { class: 'card list menu' },
-      item('#inventur', 'clipboard', 'Inventur', 'Zählen und Unterschiede korrigieren'),
-      item('#inventurliste', 'print', 'Inventurliste', 'Drucken / PDF / Excel – je Person oder alle'),
-      item('#stammdaten', 'database', 'Stammdaten', 'Artikel, Hersteller, Kategorien, Lagerorte')),
-    el('ul', { class: 'card list menu' },
-      item('#benutzer', 'users', isAdmin() ? 'Benutzer verwalten' : 'Benutzer', `${activeMembers().length} von ${S.maxMembers}`),
-      item('#konto', 'user', 'Mein Konto', 'Name, Passwort, Zwei-Faktor'),
-      item('#protokoll', 'history', 'Änderungsprotokoll', 'Wer hat wann was gemacht')),
-    el('ul', { class: 'card list menu' },
-      item(null, 'download', 'Datensicherung', 'Alle Daten als Datei (JSON)', backupJSON),
-      item(null, 'phone', 'App installieren', 'Auf den Home-Bildschirm legen', installHelp),
-      isDemo()
-        ? [item(null, 'refresh', 'Demo zurücksetzen', 'Beispieldaten neu laden', async () => {
-          if (!await confirmBox('Alle Demo-Daten werden zurückgesetzt.', { ok: 'Zurücksetzen', danger: true })) return;
-          S.backend.resetDemo(); await reload(); toast('Demo zurückgesetzt.'); go('#bestand');
-        }), item(null, 'logout', 'Demo beenden', 'Zurück zum Start', () => hooks.logout())]
-        : item(null, 'logout', 'Abmelden', displayLogin(S.session?.user?.email), async () => {
-          if (await confirmBox('Wirklich abmelden?', { ok: 'Abmelden', title: 'Abmelden' })) hooks.logout();
-        })),
-    el('p', { class: 'sub center', text: 'Lager · Version 2.0' }));
+  const admin = isAdmin();
+  const activeN = activeMembers().length;
+  const tile = (ic, title, sub, { href, onclick, cls = '' } = {}) =>
+    el(href ? 'a' : 'button', { class: 'tile ' + cls, href, type: href ? null : 'button', onclick },
+      el('span', { class: 'tile-ic' }, icon(ic)),
+      el('span', { class: 'tile-txt' }, el('span', { class: 'tile-t', text: title }), sub ? el('span', { class: 'tile-s', text: sub }) : null));
+  const group = (title, tiles) => el('section', { class: 'tile-group' }, el('h2', { class: 'section', text: title }), el('div', { class: 'tiles' }, tiles.filter(Boolean)));
+  const username = S.me.username || displayLogin(S.me.email);
+  return el('div', { class: 'more' },
+    topbar('Mehr'),
+    el('section', { class: 'card profile' },
+      el('span', { class: 'avatar big', text: S.me.name.slice(0, 1).toUpperCase() }),
+      el('div', { class: 'grow' },
+        el('div', { class: 'profile-name', text: S.me.name }),
+        el('div', { class: 'sub', text: '@' + username }),
+        el('div', { class: 'profile-badges' },
+          el('span', { class: 'badge ' + (admin ? 'arch' : ''), text: admin ? 'Admin' : 'Mitglied' }),
+          isDemo() ? el('span', { class: 'badge move', text: 'Demo' }) : el('span', { class: 'badge in' }, icon('check', 'xs'), ' Zwei-Faktor aktiv')))),
+    group('Bestand & Inventur', [
+      tile('clipboard', 'Inventur', 'Zählen & korrigieren', { href: '#inventur' }),
+      tile('print', 'Inventurliste', 'Drucken · PDF · Excel', { href: '#inventurliste' }),
+      tile('database', 'Stammdaten', 'Artikel, Hersteller …', { href: '#stammdaten' }),
+    ]),
+    admin ? group('Verwaltung', [
+      tile('users', 'Benutzer', `${activeN}/${S.maxMembers} aktiv`, { href: '#benutzer' }),
+    ]) : null,
+    group('Konto', [
+      tile('user', 'Mein Konto', 'Name · Zwei-Faktor', { href: '#konto' }),
+      isDemo() ? null : tile('key', 'Passwort ändern', 'Neues Passwort', { onclick: changePassword }),
+      admin ? null : tile('users', 'Benutzer', `${activeN} Personen`, { href: '#benutzer' }),
+    ]),
+    group('System', [
+      tile('history', 'Protokoll', 'Wer hat was geändert', { href: '#protokoll' }),
+      tile('download', 'Datensicherung', 'Alles als Datei', { onclick: backupJSON }),
+      tile('phone', 'App installieren', 'Home-Bildschirm', { onclick: installHelp }),
+      isDemo() ? tile('refresh', 'Demo zurücksetzen', 'Beispieldaten neu', { onclick: async () => {
+        if (!await confirmBox('Alle Demo-Daten werden zurückgesetzt.', { ok: 'Zurücksetzen', danger: true })) return;
+        S.backend.resetDemo(); await reload(); toast('Demo zurückgesetzt.'); go('#bestand');
+      } }) : null,
+    ]),
+    el('button', { type: 'button', class: 'btn block logout-btn', onclick: async () => {
+      if (isDemo() || await confirmBox('Wirklich abmelden? Gespeicherte Daten auf diesem Gerät werden gelöscht.', { ok: 'Abmelden', title: 'Abmelden' })) hooks.logout();
+    } }, icon('logout'), isDemo() ? 'Demo beenden' : 'Abmelden'),
+    el('p', { class: 'version', text: `Lager · Version ${APP_VERSION}` }));
 }
 
 async function installHelp() {
@@ -58,7 +77,7 @@ export function account() {
         el('dt', { text: 'Name' }), el('dd', { text: S.me.name }),
         el('dt', { text: 'Benutzername' }), el('dd', { text: S.me.username || displayLogin(S.me.email) }),
         el('dt', { text: 'Rolle' }), el('dd', { text: S.me.role === 'admin' ? 'Admin' : 'Mitglied' })),
-      el('div', { class: 'actions mt' },
+      el('div', { class: 'actions mt stack' },
         el('button', { class: 'btn', disabled: S.readonly, onclick: async () => {
           const res = await formDialog('Name ändern', [{ name: 'name', label: 'Dein Name', required: true, max: 60 }], { name: S.me.name });
           if (!res) return;
@@ -71,7 +90,7 @@ export function account() {
         el('span', { class: 'grow' }, el('strong', { class: 'block', text: 'Zwei-Faktor-Anmeldung' }),
           el('span', { class: 'sub', text: isDemo() ? 'Mit der echten Datenbank ist der 6-stellige Code Pflicht.' : `Bei jeder neuen Anmeldung wird der 6-stellige Code abgefragt – auf dem iPhone füllt Face ID ihn aus. ${mfa[1]}`.trim() })),
         el('span', { class: 'badge ' + (isDemo() ? '' : 'in'), text: mfa[0] })),
-      isDemo() ? null : el('p', { class: 'sub mt-s', text: 'Handy verloren? Ein Admin kann sie unter „Benutzer verwalten“ zurücksetzen. Abschalten geht nicht – sie ist für alle Pflicht.' })));
+      isDemo() ? null : el('p', { class: 'sub mt-s', text: 'Handy verloren? Ein Admin kann sie unter Mehr → Benutzer zurücksetzen. Abschalten geht nicht – sie ist für alle Pflicht.' })));
 }
 
 async function changePassword() {

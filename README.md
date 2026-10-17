@@ -7,7 +7,8 @@ mit **Menge**, **Einzelwert** und **Gesamtwert**. Dazu eine **Inventurliste** zu
 - Höchstens **3 Benutzer**.
 - Die App läuft auf **https://pyrolagern.de** (GitHub Pages), die Daten liegen geschützt bei **Supabase**.
 
-Ausprobieren ohne Einrichtung: App öffnen → **„Andere Datenbank / Demo“** → **„Demo ansehen“** (nur Beispieldaten, nur auf dem Gerät).
+Nur für euch: Die Seite ist für Suchmaschinen gesperrt (`robots.txt`, `noindex`), der Anmeldebildschirm verrät nichts über den Inhalt,
+und Daten gibt es nur mit Benutzername, Passwort **und** Zwei-Faktor-Code.
 
 ---
 
@@ -35,7 +36,7 @@ App öffnen → unten **„Ersteinrichtung (Admin)“** → deinen Benutzernamen
 **Zwei-Faktor einrichten** (siehe unten) → fertig.
 
 ### 4 · Freunde anlegen
-**Mehr → Benutzer verwalten → Benutzer anlegen**: Name, Benutzername, Startpasswort (wird vorgeschlagen).
+**Mehr → Benutzer → Benutzer anlegen**: Name, Benutzername, Startpasswort (wird vorgeschlagen).
 Danach erscheint ein Text mit Adresse, Benutzername und Startpasswort → **Teilen** oder **Kopieren** und z. B. per WhatsApp schicken.
 Beim ersten Anmelden legt jeder ein **eigenes Passwort** fest und richtet die **Zwei-Faktor-Anmeldung** ein.
 
@@ -59,7 +60,7 @@ Ab dann schlägt das iPhone den Code bei der Anmeldung über der Tastatur vor �
 ---
 
 ## Passwort vergessen?
-Ein **Admin** öffnet **Mehr → Benutzer verwalten** und tippt bei der Person auf **„Neues Startpasswort“**.
+Ein **Admin** öffnet **Mehr → Benutzer** und tippt bei der Person auf **„Neues Startpasswort“**.
 Die Person meldet sich damit an und legt gleich ein eigenes Passwort fest. Die Zwei-Faktor-Anmeldung bleibt.
 
 ## Handy verloren?
@@ -81,8 +82,10 @@ Tipp: Zwei Admins machen das einfacher (*Benutzer verwalten → Bearbeiten → R
 - **Bestand** (Start): Gesamtwert, Wert je Person, Liste mit Menge, Einzelwert (Durchschnitt) und Gesamtwert. Antippen → Details.
 - **＋ Hinzufügen**: **Zugang** (auch neuen Artikel direkt anlegen, auf mehrere Personen aufteilen), **Entnahme**, **Übertragen**.
 - **Verlauf**: alle Buchungen, eigene löschen, Export für Excel.
-- **Mehr**: Inventur, **Inventurliste** (Drucken/PDF/Excel, je Person oder alle, mit Unterschriftszeilen), Stammdaten,
-  Benutzer, Mein Konto, Änderungsprotokoll, Datensicherung.
+- **Mehr**: Profil oben, darunter Kacheln: *Bestand & Inventur* (Inventur, **Inventurliste** zum Drucken/PDF/Excel mit
+  Unterschriftszeilen, Stammdaten), *Verwaltung* (Benutzer, nur Admins), *Konto* (Mein Konto, Passwort ändern),
+  *System* (Protokoll, Datensicherung, App installieren) – und ganz unten **Abmelden** (löscht gespeicherte Daten auf dem Gerät).
+- **Countdowns** im Bestand: Tage bis Silvester und bis zum ersten Einkaufstag (die letzten 3 Werktage Mo–Sa des Jahres).
 
 ## Sicherheit kurz
 - Ohne Passwort **und** Code zeigt die **Datenbank** nichts an – das prüft Supabase selbst, nicht nur die App.

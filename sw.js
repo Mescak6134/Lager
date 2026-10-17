@@ -1,6 +1,6 @@
 // Service Worker: speichert die App-Dateien, damit sie schnell und auch offline startet.
 // Daten (Supabase) werden NIE zwischengespeichert – die kommen immer frisch.
-const VERSION = 'lager-v2.1.0';
+const VERSION = 'lager-v2.2.0';
 const FONTS = 'lager-fonts-v1'; // Schrift (Google Fonts) – bleibt über Versionen erhalten
 const SHELL = [
   './', './index.html', './style.css', './config.js', './manifest.webmanifest',

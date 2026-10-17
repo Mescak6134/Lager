@@ -192,7 +192,7 @@ export function alertBox(title, ...content) {
 /**
  * Formular im Dialog.
  * fields: [{ name, label, type, options:[[value,label]], required, hint, placeholder, scan, accept }]
- * Liefert die eingegebenen Werte oder null bei Abbruch.
+ * Gibt die eingegebenen Werte zurück (null bei Abbruch).
  * onSave(values) darf einen Fehler werfen → wird im Dialog angezeigt.
  */
 export function formDialog(title, fields, values = {}, { submit = 'Speichern', onSave, extra } = {}) {

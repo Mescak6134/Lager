@@ -1,6 +1,6 @@
 // Start der App: Verbindung, Anmeldung (Benutzername), Pflicht-Passwort, Zwei-Faktor, Navigation.
 import * as CONFIG from '../config.js';
-import { createSupabaseBackend, createDemoBackend, friendlyError, demoExists } from './db.js';
+import { createSupabaseBackend, createDemoBackend, friendlyError } from './db.js';
 import { S, hooks, reload, setData, loadSnapshot, clearSnapshot, isDemo } from './store.js';
 import { el, clear, icon, toast } from './ui.js';
 import { loginEmail, displayLogin, normalizeUsername, validUsername } from './accounts.js';
@@ -61,18 +61,28 @@ function showScreen(name, node) {
 }
 function logo(sub) {
   const img = el('img', { src: 'icons/icon-192.png', alt: 'Lager', class: 'logo-img', onclick: () => burstAt(img) });
-  return el('div', { class: 'logo' }, img, el('h1', { text: 'Lager' }), el('p', { class: 'sub', text: sub || 'Was gehört wem – und was ist es wert?' }));
+  return el('div', { class: 'logo' }, img, el('h1', { text: 'Lager' }), sub ? el('p', { class: 'sub', text: sub }) : null);
 }
 const splash = (t) => el('div', { class: 'splash' }, el('img', { src: 'icons/icon-192.png', alt: '', width: 88, height: 88, class: 'splash-img' }), el('p', { text: t }));
 
 // ---------------------------------------------------------------------
 //  Start
 // ---------------------------------------------------------------------
+// Verbindung steht fest in config.js. Nur solange dort noch Platzhalter stehen (Ersteinrichtung des Projekts),
+// gibt es den Verbinden-Bildschirm bzw. eine Verbindung aus diesem Gerät.
+const CONFIG_OK = /^https:\/\//.test(String(CONFIG.SUPABASE_URL || '')) && !!CONFIG.SUPABASE_KEY && !String(CONFIG.SUPABASE_KEY).startsWith('HIER-');
+const DEMO = new URLSearchParams(location.search).get('demo') === '1';   // versteckt, nur für Tests
 function storedConfig() {
-  const url = String(CONFIG.SUPABASE_URL || ''), key = String(CONFIG.SUPABASE_KEY || '');
-  if (/^https:\/\//.test(url) && key && !key.startsWith('HIER-')) return { url, key };
+  if (CONFIG_OK) return { url: String(CONFIG.SUPABASE_URL), key: String(CONFIG.SUPABASE_KEY) };
   try { const c = JSON.parse(localStorage.getItem('lager-config')); if (c && c.url && c.key) return c; } catch { /* */ }
   return null;
+}
+// Nichts Unnötiges auf dem Gerät liegen lassen
+function tidyStorage() {
+  const drop = ['lager-mode', 'lager-demo-v2', 'lager-demo-v3'];
+  if (!DEMO) drop.push('lager-demo-v4');
+  if (CONFIG_OK) drop.push('lager-config');
+  try { drop.forEach((k) => localStorage.removeItem(k)); } catch { /* */ }
 }
 
 async function boot() {
@@ -80,14 +90,14 @@ async function boot() {
   window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); S.installPrompt = e; });
   window.addEventListener('online', onOnline);
   window.addEventListener('offline', () => updateOffline());
-  if (localStorage.getItem('lager-mode') === 'demo') return startDemo();
+  tidyStorage();
+  if (DEMO) return startDemo();
   const cfg = storedConfig();
   if (!cfg) return showSetup();
   return startSupabase(cfg);
 }
 
 async function startDemo() {
-  try { localStorage.setItem('lager-mode', 'demo'); } catch { /* */ }
   S.backend = createDemoBackend();
   S.session = await S.backend.getSession();
   S.me = await S.backend.claimMembership();
@@ -99,7 +109,7 @@ async function startSupabase(cfg) {
   try { S.backend = await createSupabaseBackend(cfg.url, cfg.key); } catch (e) { return offlineOr(e); }
   S.backend.onAuthChange((event, session) => {
     S.session = session;
-    if (event === 'SIGNED_OUT' && !['login', 'setup', 'firstrun'].includes(screen)) showLogin();
+    if (event === 'SIGNED_OUT') { clearSnapshot(); if (!['login', 'setup', 'firstrun'].includes(screen)) showLogin(); }
   });
   let session = null;
   try { session = await S.backend.getSession(); } catch { /* offline */ }
@@ -113,6 +123,7 @@ async function afterLogin() {
   showScreen('loading', splash('Lade Daten …'));
   let me;
   try { me = await S.backend.claimMembership(); } catch (e) { return offlineOr(e); }
+  if (!me || !me.active) clearSnapshot();
   if (!me) return showNoAccess('Dieses Konto gehört zu keinem Benutzer der App.');
   if (!me.active) return showNoAccess('Dein Zugang wurde deaktiviert. Bitte wende dich an euren Admin.');
   S.me = me;
@@ -185,18 +196,13 @@ function showSetup() {
   const key = el('input', { type: 'text', placeholder: 'sb_publishable_…', autocomplete: 'off', autocapitalize: 'none' });
   const err = el('div', { class: 'error', hidden: true });
   showScreen('setup', el('div', { class: 'auth' },
-    logo('Noch ist keine Datenbank verbunden.'),
+    logo('Noch nicht verbunden'),
     el('div', { class: 'card' },
-      el('h2', { text: 'Erst mal ausprobieren' }),
-      el('p', { class: 'sub', text: 'Die Demo zeigt die App mit Beispieldaten. Alles bleibt nur auf diesem Gerät.' }),
-      el('button', { class: 'btn primary block mt', onclick: () => startDemo() }, icon('box'), demoExists() ? 'Demo öffnen' : 'Demo ansehen')),
-    el('details', { class: 'card' },
-      el('summary', { text: 'Eigene Datenbank verbinden' }),
-      el('p', { class: 'sub', text: 'Normalerweise steht das fest in config.js. Zum Testen geht es auch hier:' }),
+      el('p', { class: 'sub', text: 'Die Verbindung gehört in config.js. Zum Testen geht es auch hier:' }),
       err,
       el('label', { class: 'field mt' }, el('span', { class: 'lbl', text: 'Supabase Project URL' }), url),
       el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Publishable Key' }), key),
-      el('button', { class: 'btn block', onclick: () => {
+      el('button', { class: 'btn primary block', onclick: () => {
         const u = url.value.trim().replace(/\/+$/, ''), k = key.value.trim();
         if (!/^https:\/\/.+/.test(u) || k.length < 20) { err.textContent = 'Bitte URL (https://…) und Schlüssel eintragen.'; err.hidden = false; return; }
         if (/service_role|sb_secret_/.test(k)) { err.textContent = 'Das ist der geheime Schlüssel! Bitte den öffentlichen „publishable“ Schlüssel nehmen.'; err.hidden = false; return; }
@@ -219,7 +225,7 @@ function showLogin(message) {
   const btn = el('button', { type: 'submit', class: 'btn primary block', text: 'Anmelden' });
   const firstRun = el('div', { class: 'center' });
   showScreen('login', el('div', { class: 'auth' },
-    logo(),
+    logo(''),
     el('form', { class: 'card', onsubmit: async (e) => {
       e.preventDefault(); err.hidden = true;
       if (!user.value.trim() || !pw.value) { err.textContent = 'Bitte Benutzername und Passwort eingeben.'; err.hidden = false; return; }
@@ -233,22 +239,14 @@ function showLogin(message) {
     err,
     el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Benutzername' }), user),
     el('label', { class: 'field' }, el('span', { class: 'lbl', text: 'Passwort' }), pw),
-    btn,
-    el('p', { class: 'sub center mt', text: 'Passwort vergessen? Frag euren Admin – er gibt dir ein neues Startpasswort.' })),
-    firstRun,
-    el('div', { class: 'center' }, el('button', { type: 'button', class: 'linkbtn small-link', text: 'Andere Datenbank / Demo', onclick: resetConnection }))));
+    btn),
+    firstRun));
   if (!shown.login) { shown.login = true; fireworksShow(); }
   // Ersteinrichtung nur anbieten, wenn der Admin noch kein Konto hat (oder per ?ersteinrichtung)
   const forced = new URLSearchParams(location.search).has('ersteinrichtung');
   (forced ? Promise.resolve(true) : S.backend.setupPending()).then((pending) => {
     if (pending) firstRun.append(el('button', { type: 'button', class: 'linkbtn', id: 'firstrun-link', text: 'Ersteinrichtung (Admin)', onclick: showFirstRun }));
   }).catch(() => {});
-}
-
-function resetConnection() {
-  try { localStorage.removeItem('lager-config'); localStorage.removeItem('lager-mode'); } catch { /* */ }
-  if (storedConfig()) { toast('Die Verbindung steht fest in config.js.'); showSetup(); return; }
-  location.reload();
 }
 
 // Ersteinrichtung: der Admin legt sein Passwort fest (Benutzername aus dem Datenbank-Skript)
@@ -320,11 +318,7 @@ function showNoAccess(text) {
 export async function logout() {
   clearSnapshot();
   try { localStorage.removeItem('lager-mfa-pending'); } catch { /* */ }
-  if (isDemo()) {
-    try { localStorage.removeItem('lager-mode'); } catch { /* */ }
-    location.hash = ''; location.reload();
-    return;
-  }
+  if (isDemo()) { location.href = location.pathname; return; }
   await S.backend.signOut();
   S.me = null; S.data = null; S.D = null;
   showLogin();
